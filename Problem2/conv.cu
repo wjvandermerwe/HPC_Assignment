@@ -60,192 +60,285 @@
 const char *imageFilename = "teapot512.pgm";
 const char *refFilename = "ref_rotated.pgm";
 
-const char *sampleName = "simpleTexture";
+// Declaration, forward
+void testFilters(int argc, char **argv);
 
-////////////////////////////////////////////////////////////////////////////////
-// Constants
-const float angle = 0.5f;  // angle to rotate image by (in radians)
+// Constants for convolution
+#define MAX_KERNEL_SIZE 32
+#define BLOCK_SIZE 16
 
-// Auto-Verification Code
-bool testResult = true;
+// Structure to hold filter information
+struct ConvolutionFilter {
+    float kernel[MAX_KERNEL_SIZE][MAX_KERNEL_SIZE];
+    int kernelSize;
+};
 
-////////////////////////////////////////////////////////////////////////////////
-//! Transform an image using texture lookups
-//! @param outputData  output data in global memory
-////////////////////////////////////////////////////////////////////////////////
-__global__ void transformKernel(float *outputData, int width, int height,
-                                float theta, cudaTextureObject_t tex) {
-  // calculate normalized texture coordinates
-  unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
-  unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;
+// New convolution kernel
+__global__ void convolutionKernel(float *outputData, int width, int height,
+                                  cudaTextureObject_t tex, ConvolutionFilter filter) {
+    unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;
 
-  float u = (float)x - (float)width / 2;
-  float v = (float)y - (float)height / 2;
-  float tu = u * cosf(theta) - v * sinf(theta);
-  float tv = v * cosf(theta) + u * sinf(theta);
+    if (x >= width || y >= height) return;
 
-  tu /= (float)width;
-  tv /= (float)height;
+    float sum = 0.0f;
+    int filterRadius = filter.kernelSize / 2;
 
-  // read from texture and write to global memory
-  outputData[y * width + x] = tex2D<float>(tex, tu + 0.5f, tv + 0.5f);
+    // Apply convolution
+    for (int fy = -filterRadius; fy <= filterRadius; fy++) {
+        for (int fx = -filterRadius; fx <= filterRadius; fx++) {
+            float u = (float) (x + fx) / (float) width;
+            float v = (float) (y + fy) / (float) height;
+
+            float pixelValue = tex2D<float>(tex, u, v);
+            float filterValue = filter.kernel[fy + filterRadius][fx + filterRadius];
+
+            sum += pixelValue * filterValue;
+        }
+    }
+
+    outputData[y * width + x] = sum;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// Declaration, forward
-void runTest(int argc, char **argv);
+__global__ void convolutionSharedKernel(float *outputData, int width, int height,
+                                        cudaTextureObject_t tex, ConvolutionFilter filter) {
+    // Shared memory for the image tile
+    __shared__ float sharedMem[BLOCK_SIZE + MAX_KERNEL_SIZE - 1][BLOCK_SIZE + MAX_KERNEL_SIZE - 1];
+
+    int tx = threadIdx.x;
+    int ty = threadIdx.y;
+    int bx = blockIdx.x * blockDim.x;
+    int by = blockIdx.y * blockDim.y;
+    int x = bx + tx;
+    int y = by + ty;
+
+    int filterRadius = filter.kernelSize / 2;
+
+    // Load the main pixel block into shared memory
+    if (x < width && y < height) {
+        float u = (float) x / (float) width;
+        float v = (float) y / (float) height;
+        sharedMem[ty][tx] = tex2D<float>(tex, u, v);
+    }
+
+    // Load halo region
+    if (tx < filterRadius) {
+        // Left halo
+        if (x >= filterRadius && y < height) {
+            float u = (float) (x - filterRadius) / (float) width;
+            float v = (float) y / (float) height;
+            sharedMem[ty][tx - filterRadius] = tex2D<float>(tex, u, v);
+        }
+        // Right halo
+        if (x + BLOCK_SIZE < width && y < height) {
+            float u = (float) (x + BLOCK_SIZE) / (float) width;
+            float v = (float) y / (float) height;
+            sharedMem[ty][tx + BLOCK_SIZE] = tex2D<float>(tex, u, v);
+        }
+    }
+
+    if (ty < filterRadius) {
+        // Top halo
+        if (y >= filterRadius && x < width) {
+            float u = (float) x / (float) width;
+            float v = (float) (y - filterRadius) / (float) height;
+            sharedMem[ty - filterRadius][tx] = tex2D<float>(tex, u, v);
+        }
+        // Bottom halo
+        if (y + BLOCK_SIZE < height && x < width) {
+            float u = (float) x / (float) width;
+            float v = (float) (y + BLOCK_SIZE) / (float) height;
+            sharedMem[ty + BLOCK_SIZE][tx] = tex2D<float>(tex, u, v);
+        }
+    }
+
+    __syncthreads();
+
+    // Compute convolution
+    if (x < width && y < height) {
+        float sum = 0.0f;
+
+        for (int fy = -filterRadius; fy <= filterRadius; fy++) {
+            for (int fx = -filterRadius; fx <= filterRadius; fx++) {
+                float pixelValue = sharedMem[ty + fy + filterRadius][tx + fx + filterRadius];
+                float filterValue = filter.kernel[fy + filterRadius][fx + filterRadius];
+                sum += pixelValue * filterValue;
+            }
+        }
+
+        outputData[y * width + x] = sum;
+    }
+}
+
+// Function to create some common filters
+ConvolutionFilter createFilter(const char *filterType) {
+    ConvolutionFilter filter;
+
+    if (strcmp(filterType, "emboss") == 0) {
+        filter.kernelSize = 5;
+        for (int i = 0; i < filter.kernelSize; i++)
+            for (int j = 0; j < filter.kernelSize; j++)
+                filter.kernel[i][i] = 0.0f;
+        filter.kernel[0][0] = 1.0f;
+        filter.kernel[1][1] = 1.0f;
+        filter.kernel[3][3] = -1.0f;
+        filter.kernel[4][4] = -1.0f;
+    } else if (strcmp(filterType, "sharpen") == 0) {
+        filter.kernelSize = 3;
+        for (int i = 0; i < filter.kernelSize; i++)
+            for (int j = 0; j < filter.kernelSize; j++)
+                filter.kernel[i][j] = -1.0f;
+        filter.kernel[1][1] = 9.0f;
+    } else if (strcmp(filterType, "average") == 0) {
+        filter.kernelSize = 5;
+        float num = 1.0f / (filter.kernelSize * filter.kernelSize);
+        for (int i = 0; i < filter.kernelSize; i++)
+            for (int j = 0; j < filter.kernelSize; j++)
+                filter.kernel[i][j] = num;
+    }
+
+    return filter;
+}
+
+void sequentialConvolution(float *input, float *output, int width, int height,
+                           float *filter, int filterSize) {
+    int filterRadius = filterSize / 2;
+
+    // For each pixel in the image
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            float sum = 0.0f;
+
+            // Apply filter
+            for (int fy = -filterRadius; fy <= filterRadius; fy++) {
+                for (int fx = -filterRadius; fx <= filterRadius; fx++) {
+                    // Calculate source pixel position with clamping at borders
+                    int srcX = min(max(x + fx, 0), width - 1);
+                    int srcY = min(max(y + fy, 0), height - 1);
+
+                    // Get pixel value and corresponding filter value
+                    float pixelValue = input[srcY * width + srcX];
+                    float filterValue = filter[(fy + filterRadius) * filterSize +
+                                               (fx + filterRadius)];
+
+                    sum += pixelValue * filterValue;
+                }
+            }
+
+            // Store result
+            output[y * width + x] = sum;
+        }
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Program main
 ////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char **argv) {
-  printf("%s starting...\n", sampleName);
+    printf("%s starting...\n");
 
-  // Process command-line arguments
-  if (argc > 1) {
-    if (checkCmdLineFlag(argc, (const char **)argv, "input")) {
-      getCmdLineArgumentString(argc, (const char **)argv, "input",
-                               (char **)&imageFilename);
+    testFilters(argc, argv);
 
-      if (checkCmdLineFlag(argc, (const char **)argv, "reference")) {
-        getCmdLineArgumentString(argc, (const char **)argv, "reference",
-                                 (char **)&refFilename);
-      } else {
-        printf("-input flag should be used with -reference flag");
-        exit(EXIT_FAILURE);
-      }
-    } else if (checkCmdLineFlag(argc, (const char **)argv, "reference")) {
-      printf("-reference flag should be used with -input flag");
-      exit(EXIT_FAILURE);
-    }
-  }
+    printf("%s completed, returned %s\n");
 
-  runTest(argc, argv);
 
-  printf("%s completed, returned %s\n", sampleName,
-         testResult ? "OK" : "ERROR!");
-  exit(testResult ? EXIT_SUCCESS : EXIT_FAILURE);
+    exit(EXIT_SUCCESS);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-//! Run a simple test for CUDA
-////////////////////////////////////////////////////////////////////////////////
-void runTest(int argc, char **argv) {
-  int devID = findCudaDevice(argc, (const char **)argv);
+void testFilters(int argc, char **argv) {
+    int devID = findCudaDevice(argc, (const char **) argv);
 
-  // load image from disk
-  float *hData = NULL;
-  unsigned int width, height;
-  char *imagePath = sdkFindFilePath(imageFilename, argv[0]);
+    // load image from disk
+    float *hData = NULL;
+    unsigned int width, height;
+    char *imagePath = sdkFindFilePath(imageFilename, argv[0]);
 
-  if (imagePath == NULL) {
-    printf("Unable to source image file: %s\n", imageFilename);
-    exit(EXIT_FAILURE);
-  }
+    if (imagePath == NULL) {
+        printf("Unable to source image file: %s\n", imageFilename);
+        exit(EXIT_FAILURE);
+    }
 
-  sdkLoadPGM(imagePath, &hData, &width, &height);
+    sdkLoadPGM(imagePath, &hData, &width, &height);
 
-  unsigned int size = width * height * sizeof(float);
-  printf("Loaded '%s', %d x %d pixels\n", imageFilename, width, height);
+    unsigned int size = width * height * sizeof(float);
+    printf("Loaded '%s', %d x %d pixels\n", imageFilename, width, height);
 
-  // Load reference image from image (output)
-  float *hDataRef = (float *)malloc(size);
-  char *refPath = sdkFindFilePath(refFilename, argv[0]);
+    // Allocate device memory for result
+    float *dData = NULL;
+    checkCudaErrors(cudaMalloc((void **)&dData, size));
 
-  if (refPath == NULL) {
-    printf("Unable to find reference image file: %s\n", refFilename);
-    exit(EXIT_FAILURE);
-  }
+    // Allocate array and copy image data
+    cudaChannelFormatDesc channelDesc =
+            cudaCreateChannelDesc(32, 0, 0, 0, cudaChannelFormatKindFloat);
+    cudaArray *cuArray;
+    checkCudaErrors(cudaMallocArray(&cuArray, &channelDesc, width, height));
+    checkCudaErrors(
+        cudaMemcpyToArray(cuArray, 0, 0, hData, size, cudaMemcpyHostToDevice));
 
-  sdkLoadPGM(refPath, &hDataRef, &width, &height);
+    cudaTextureObject_t tex;
+    cudaResourceDesc texRes;
+    memset(&texRes, 0, sizeof(cudaResourceDesc));
 
-  // Allocate device memory for result
-  float *dData = NULL;
-  checkCudaErrors(cudaMalloc((void **)&dData, size));
+    texRes.resType = cudaResourceTypeArray;
+    texRes.res.array.array = cuArray;
 
-  // Allocate array and copy image data
-  cudaChannelFormatDesc channelDesc =
-      cudaCreateChannelDesc(32, 0, 0, 0, cudaChannelFormatKindFloat);
-  cudaArray *cuArray;
-  checkCudaErrors(cudaMallocArray(&cuArray, &channelDesc, width, height));
-  checkCudaErrors(
-      cudaMemcpyToArray(cuArray, 0, 0, hData, size, cudaMemcpyHostToDevice));
+    cudaTextureDesc texDescr;
+    memset(&texDescr, 0, sizeof(cudaTextureDesc));
 
-  cudaTextureObject_t tex;
-  cudaResourceDesc texRes;
-  memset(&texRes, 0, sizeof(cudaResourceDesc));
+    texDescr.normalizedCoords = true;
+    texDescr.filterMode = cudaFilterModeLinear;
+    texDescr.addressMode[0] = cudaAddressModeWrap;
+    texDescr.addressMode[1] = cudaAddressModeWrap;
+    texDescr.readMode = cudaReadModeElementType;
 
-  texRes.resType = cudaResourceTypeArray;
-  texRes.res.array.array = cuArray;
+    checkCudaErrors(cudaCreateTextureObject(&tex, &texRes, &texDescr, NULL));
 
-  cudaTextureDesc texDescr;
-  memset(&texDescr, 0, sizeof(cudaTextureDesc));
+    dim3 dimBlock(8, 8, 1);
+    dim3 dimGrid(width / dimBlock.x, height / dimBlock.y, 1);
 
-  texDescr.normalizedCoords = true;
-  texDescr.filterMode = cudaFilterModeLinear;
-  texDescr.addressMode[0] = cudaAddressModeWrap;
-  texDescr.addressMode[1] = cudaAddressModeWrap;
-  texDescr.readMode = cudaReadModeElementType;
+    ConvolutionFilter filter = createFilter("blur");
 
-  checkCudaErrors(cudaCreateTextureObject(&tex, &texRes, &texDescr, NULL));
+    // Warmup
+    convolutionKernel<<<dimGrid, dimBlock, 0>>>(dData, width, height, tex, filter);
 
-  dim3 dimBlock(8, 8, 1);
-  dim3 dimGrid(width / dimBlock.x, height / dimBlock.y, 1);
+    checkCudaErrors(cudaDeviceSynchronize());
+    StopWatchInterface *timer = NULL;
+    sdkCreateTimer(&timer);
+    sdkStartTimer(&timer);
 
-  // Warmup
-  transformKernel<<<dimGrid, dimBlock, 0>>>(dData, width, height, angle, tex);
+    // Execute the kernel
+    convolutionKernel<<<dimGrid, dimBlock, 0>>>(dData, width, height, tex, filter);
 
-  checkCudaErrors(cudaDeviceSynchronize());
-  StopWatchInterface *timer = NULL;
-  sdkCreateTimer(&timer);
-  sdkStartTimer(&timer);
+    // dim3 blockSize(BLOCK_SIZE, BLOCK_SIZE);
+    // dim3 gridSize((width + BLOCK_SIZE - 1) / BLOCK_SIZE,
+    //               (height + BLOCK_SIZE - 1) / BLOCK_SIZE);
+    //
+    // convolutionSharedKernel<<<gridSize, blockSize>>>(dData, width, height, tex, filter);
 
-  // Execute the kernel
-  transformKernel<<<dimGrid, dimBlock, 0>>>(dData, width, height, angle, tex);
+    // Check if kernel execution generated an error
+    getLastCudaError("Kernel execution failed");
 
-  // Check if kernel execution generated an error
-  getLastCudaError("Kernel execution failed");
+    checkCudaErrors(cudaDeviceSynchronize());
+    sdkStopTimer(&timer);
+    printf("Processing time: %f (ms)\n", sdkGetTimerValue(&timer));
+    printf("%.2f Mpixels/sec\n",
+           (width * height / (sdkGetTimerValue(&timer) / 1000.0f)) / 1e6);
+    sdkDeleteTimer(&timer);
 
-  checkCudaErrors(cudaDeviceSynchronize());
-  sdkStopTimer(&timer);
-  printf("Processing time: %f (ms)\n", sdkGetTimerValue(&timer));
-  printf("%.2f Mpixels/sec\n",
-         (width * height / (sdkGetTimerValue(&timer) / 1000.0f)) / 1e6);
-  sdkDeleteTimer(&timer);
+    // Allocate mem for the result on host side
+    float *hOutputData = (float *) malloc(size);
+    // copy result from device to host
+    checkCudaErrors(cudaMemcpy(hOutputData, dData, size, cudaMemcpyDeviceToHost));
 
-  // Allocate mem for the result on host side
-  float *hOutputData = (float *)malloc(size);
-  // copy result from device to host
-  checkCudaErrors(cudaMemcpy(hOutputData, dData, size, cudaMemcpyDeviceToHost));
+    // Write result to file
+    char outputFilename[1024];
+    strcpy(outputFilename, imagePath);
+    strcpy(outputFilename + strlen(imagePath) - 4, "_out.pgm");
+    sdkSavePGM(outputFilename, hOutputData, width, height);
+    printf("Wrote '%s'\n", outputFilename);
 
-  // Write result to file
-  char outputFilename[1024];
-  strcpy(outputFilename, imagePath);
-  strcpy(outputFilename + strlen(imagePath) - 4, "_out.pgm");
-  sdkSavePGM(outputFilename, hOutputData, width, height);
-  printf("Wrote '%s'\n", outputFilename);
-
-  // Write regression file if necessary
-  if (checkCmdLineFlag(argc, (const char **)argv, "regression")) {
-    // Write file for regression test
-    sdkWriteFile<float>("./data/regression.dat", hOutputData, width * height,
-                        0.0f, false);
-  } else {
-    // We need to reload the data from disk,
-    // because it is inverted upon output
-    sdkLoadPGM(outputFilename, &hOutputData, &width, &height);
-
-    printf("Comparing files\n");
-    printf("\toutput:    <%s>\n", outputFilename);
-    printf("\treference: <%s>\n", refPath);
-
-    testResult = compareData(hOutputData, hDataRef, width * height,
-                             MAX_EPSILON_ERROR, 0.15f);
-  }
-
-  checkCudaErrors(cudaDestroyTextureObject(tex));
-  checkCudaErrors(cudaFree(dData));
-  checkCudaErrors(cudaFreeArray(cuArray));
-  free(imagePath);
-  free(refPath);
+    checkCudaErrors(cudaDestroyTextureObject(tex));
+    checkCudaErrors(cudaFree(dData));
+    checkCudaErrors(cudaFreeArray(cuArray));
+    free(imagePath);
 }
