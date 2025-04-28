@@ -19,6 +19,7 @@
 \usepackage{listings}
 \usepackage{mathptmx}
 \usepackage{fancyhdr}
+\usepackage[backend=biber]{biblatex}
 \usepackage{verbatim}
 \usepackage{enumitem}
 \usepackage{booktabs}
@@ -71,14 +72,13 @@ escapeinside={\%*}{*)}          % if you want to add a comment within your code
 \setlength{\parindent}{0pt}
 \setlength{\parskip}{1em}
 \linespread{1} 
-% 
+
 \makeatletter
 \newcommand{\rmnum}[1]{\romannumeral #1}
 \newcommand{\Rmnum}[1]{\expandafter\@slowromancap\romannumeral #1@}
-\makeatother
+% \addbibresource{refs.bib}
 
 \input{assignment1_report}
-%\bibliographystyle{apalike}
-%\bibliography{../HPC}
+
 
 
