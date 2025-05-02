@@ -68,112 +68,22 @@ void testFilters(int argc, char **argv);
 #define BLOCK_SIZE 16
 
 // Structure to hold filter information
-struct ConvolutionFilter {
+struct FilterSettings {
     float kernel[MAX_KERNEL_SIZE][MAX_KERNEL_SIZE];
     int kernelSize;
 };
 
-// New convolution kernel
-__global__ void convolutionKernel(float *outputData, int width, int height,
-                                  cudaTextureObject_t tex, const float* filter, int filterSize) {
-    unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
-    unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;
-
-    if (x >= width || y >= height) return;
-
-    float sum = 0.0f;
-    int filterRadius = filterSize / 2;
-
-    // Apply convolution
-    for (int fy = -filterRadius; fy <= filterRadius; fy++) {
-        for (int fx = -filterRadius; fx <= filterRadius; fx++) {
-            float u = (float) (x + fx) / (float) width;
-            float v = (float) (y + fy) / (float) height;
-
-            float pixelValue = tex2D<float>(tex, u, v);
-            float filterValue = filter[(fy + filterRadius) * filterSize + (fx + filterRadius)];
-
-            sum += pixelValue * filterValue;
-        }
-    }
-
-    outputData[y * width + x] = sum;
-}
-
-__global__ void convolutionSharedKernel(float *outputData, int width, int height,
-                                        cudaTextureObject_t tex, const float* filter, int filterSize) {
-    // Shared memory for the image tile
-    __shared__ float sharedMem[BLOCK_SIZE + MAX_KERNEL_SIZE - 1][BLOCK_SIZE + MAX_KERNEL_SIZE - 1];
-
-    int tx = threadIdx.x;
-    int ty = threadIdx.y;
-    int bx = blockIdx.x * blockDim.x;
-    int by = blockIdx.y * blockDim.y;
-    int x = bx + tx;
-    int y = by + ty;
-
-    int filterRadius = filterSize / 2;
-
-    // Load the main pixel block into shared memory
-    if (x < width && y < height) {
-        float u = (float) x / (float) width;
-        float v = (float) y / (float) height;
-        sharedMem[ty][tx] = tex2D<float>(tex, u, v);
-    }
-
-    // Load halo region
-    if (tx < filterRadius) {
-        // Left halo
-        if (x >= filterRadius && y < height) {
-            float u = (float) (x - filterRadius) / (float) width;
-            float v = (float) y / (float) height;
-            sharedMem[ty][tx - filterRadius] = tex2D<float>(tex, u, v);
-        }
-        // Right halo
-        if (x + BLOCK_SIZE < width && y < height) {
-            float u = (float) (x + BLOCK_SIZE) / (float) width;
-            float v = (float) y / (float) height;
-            sharedMem[ty][tx + BLOCK_SIZE] = tex2D<float>(tex, u, v);
-        }
-    }
-
-    if (ty < filterRadius) {
-        // Top halo
-        if (y >= filterRadius && x < width) {
-            float u = (float) x / (float) width;
-            float v = (float) (y - filterRadius) / (float) height;
-            sharedMem[ty - filterRadius][tx] = tex2D<float>(tex, u, v);
-        }
-        // Bottom halo
-        if (y + BLOCK_SIZE < height && x < width) {
-            float u = (float) x / (float) width;
-            float v = (float) (y + BLOCK_SIZE) / (float) height;
-            sharedMem[ty + BLOCK_SIZE][tx] = tex2D<float>(tex, u, v);
-        }
-    }
-
-    __syncthreads();
-
-    // Compute convolution
-    if (x < width && y < height) {
-        float sum = 0.0f;
-
-        for (int fy = -filterRadius; fy <= filterRadius; fy++) {
-            for (int fx = -filterRadius; fx <= filterRadius; fx++) {
-                float pixelValue = sharedMem[ty + fy + filterRadius][tx + fx + filterRadius];
-                float filterValue = filter[(fy + filterRadius) * filterSize + (fx + filterRadius)];
-
-                sum += pixelValue * filterValue;
-            }
-        }
-
-        outputData[y * width + x] = sum;
-    }
-}
+struct ConvolutionFilter {
+    float* d_filter; // destination memory
+    float* filterArray; // 1d input array
+    int filterBytes; // size
+    FilterSettings settings;
+};
 
 // Function to create some common filters
 ConvolutionFilter createFilter(const char *filterType) {
-    ConvolutionFilter filter;
+    FilterSettings filter;
+    ConvolutionFilter response;
 
     if (strcmp(filterType, "emboss") == 0) {
         filter.kernelSize = 5;
@@ -198,7 +108,125 @@ ConvolutionFilter createFilter(const char *filterType) {
                 filter.kernel[i][j] = num;
     }
 
-    return filter;
+    response.filterBytes = filter.kernelSize * filter.kernelSize * sizeof(float);
+
+    checkCudaErrors(cudaMalloc(&response.d_filter, response.filterBytes));
+
+    response.filterArray = new float[filter.kernelSize * filter.kernelSize];
+
+    // Add bounds check for filter.kernel
+    if (filter.kernel == nullptr) {
+        fprintf(stderr, "Error: filter.kernel is null!\n");
+        fflush(stderr);
+        exit(1);
+    }
+
+    for(int i = 0; i < filter.kernelSize; i++) {
+        for(int j = 0; j < filter.kernelSize; j++) {
+            response.filterArray[i * filter.kernelSize + j] = filter.kernel[i][j];
+        }
+    }
+    response.settings = filter;
+    return response;
+}
+
+// New convolution kernel
+// 1d array filter and incomming image
+__global__ void convolutionKernel(float *outputData, int width, int height,
+                                  cudaTextureObject_t tex, const float* filter, int filterSize) {
+    unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+    if (x >= width || y >= height) return;
+
+    float sum = 0.0f;
+    int filterRadius = filterSize / 2;
+
+    // Apply convolution
+    for (int fy = -filterRadius; fy <= filterRadius; fy++) {
+        for (int fx = -filterRadius; fx <= filterRadius; fx++) {
+            // x + fx normalised texel values
+            // x being current thread = pixel
+            // fx being threshold value withing filter around current pixel
+            float u = (float) (x + fx) / (float) width;
+            float v = (float) (y + fy) / (float) height;
+
+            float pixelValue = tex2D<float>(tex, u, v);
+            // fy = -1 and fx =
+            float filterValue = filter[(fy + filterRadius) * filterSize + (fx + filterRadius)];
+
+            sum += pixelValue * filterValue;
+        }
+    }
+
+    outputData[y * width + x] = sum;
+}
+
+__global__ void convolutionSharedKernel(float *outputData, int width, int height,
+                                       cudaTextureObject_t tex, const float* filter, 
+                                       int filterSize) {
+    extern __shared__ float sharedMem[];
+    
+    int tx = threadIdx.x;
+    int ty = threadIdx.y;
+    int bx = blockIdx.x * blockDim.x;
+    int by = blockIdx.y * blockDim.y;
+    int x = bx + tx;
+    int y = by + ty;
+
+    // Calculate shared memory dimensions
+    const int sharedDim = BLOCK_SIZE + filterSize - 1;
+    const int filterRadius = filterSize / 2;
+
+    // Bounds checking helper
+    auto inBounds = [width, height](int x, int y) {
+        return x >= 0 && x < width && y >= 0 && y < height;
+    };
+
+    // Initialize shared memory to 0
+    for (int i = ty; i < sharedDim; i += BLOCK_SIZE) {
+        for (int j = tx; j < sharedDim; j += BLOCK_SIZE) {
+            sharedMem[i * sharedDim + j] = 0.0f;
+        }
+    }
+    __syncthreads();
+
+    // Load the main block plus halo regions
+    for (int dy = -filterRadius; dy <= filterRadius; dy++) {
+        int sy = ty + dy + filterRadius;
+        int gy = y + dy;
+        
+        for (int dx = -filterRadius; dx <= filterRadius; dx++) {
+            int sx = tx + dx + filterRadius;
+            int gx = x + dx;
+            
+            if (sx >= 0 && sx < sharedDim && sy >= 0 && sy < sharedDim) {
+                if (inBounds(gx, gy)) {
+                    float u = (float)gx / (float)width;
+                    float v = (float)gy / (float)height;
+                    sharedMem[sy * sharedDim + sx] = tex2D<float>(tex, u, v);
+                }
+            }
+        }
+    }
+    __syncthreads();
+
+    // Compute convolution only for valid output pixels
+    if (x < width && y < height) {
+        float sum = 0.0f;
+        for (int fy = 0; fy < filterSize; fy++) {
+            for (int fx = 0; fx < filterSize; fx++) {
+                int sx = tx + fx;
+                int sy = ty + fy;
+                if (sx < sharedDim && sy < sharedDim) {
+                    float pixelValue = sharedMem[sy * sharedDim + sx];
+                    float filterValue = filter[fy * filterSize + fx];
+                    sum += pixelValue * filterValue;
+                }
+            }
+        }
+        outputData[y * width + x] = sum;
+    }
 }
 
 void sequentialConvolution(float *input, float *output, int width, int height,
@@ -272,90 +300,82 @@ void testFilters(int argc, char **argv) {
     checkCudaErrors(
         cudaMemcpyToArray(cuArray, 0, 0, hData, size, cudaMemcpyHostToDevice));
 
-    cudaTextureObject_t tex;
-    cudaResourceDesc texRes;
-    memset(&texRes, 0, sizeof(cudaResourceDesc));
 
-    texRes.resType = cudaResourceTypeArray;
-    texRes.res.array.array = cuArray;
 
-    cudaTextureDesc texDescr;
-    memset(&texDescr, 0, sizeof(cudaTextureDesc));
+    cudaTextureObject_t tex = createTextureObject(cuArray);
 
-    texDescr.normalizedCoords = true;
-    texDescr.filterMode = cudaFilterModeLinear;
-    texDescr.addressMode[0] = cudaAddressModeWrap;
-    texDescr.addressMode[1] = cudaAddressModeWrap;
-    texDescr.readMode = cudaReadModeElementType;
-
-    checkCudaErrors(cudaCreateTextureObject(&tex, &texRes, &texDescr, NULL));
-
-    // Allocate device memory for result
+    // allocate device memory for result
     float *hOutputRegular = NULL;
     float *hOutputShared = NULL;
-    float *hOutputSequential = NULL;
+
     checkCudaErrors(cudaMalloc((void **)&hOutputRegular, size));
     checkCudaErrors(cudaMalloc((void **)&hOutputShared, size));
-    checkCudaErrors(cudaMalloc((void **)&hOutputSequential, size));
 
-    int blockSize = 16; // Using a more standard block size
+    printf("Debug: Starting convolution setup...\n");
+    fflush(stdout);
+
+    int blockSize = 16;
     dim3 dimBlock(blockSize, blockSize);
     dim3 dimGrid(
         (width + blockSize - 1) / blockSize,
         (height + blockSize - 1) / blockSize
     );
 
-    ConvolutionFilter filter = createFilter("blur");
-    float* d_filter;
-    int filterBytes = filter.kernelSize * filter.kernelSize * sizeof(float);
-    checkCudaErrors(cudaMalloc(&d_filter, filterBytes));
-    float* filterArray = new float[filter.kernelSize * filter.kernelSize];
-    for(int i = 0; i < filter.kernelSize; i++) {
-        for(int j = 0; j < filter.kernelSize; j++) {
-            filterArray[i * filter.kernelSize + j] = filter.kernel[i][j];
-        }
-    }
-    checkCudaErrors(cudaMemcpy(d_filter, filterArray, filterBytes, cudaMemcpyHostToDevice));
-    printf("Grid dimensions: %dx%d\n", dimGrid.x, dimGrid.y);
-    printf("Block dimensions: %dx%d\n", dimBlock.x, dimBlock.y);
-    printf("Memory allocation checks:\n");
-    printf("Image dimensions: %d x %d\n", width, height);
-    printf("Filter size: %d\n", filter.kernelSize);
-    fprintf(stderr, "Checking device pointers:\n");
-    fprintf(stderr, "dData: %p\n", dData);
-    fprintf(stderr, "d_filter: %p\n", d_filter);
-    fflush(stdout);
-    fflush(stderr);
-    // Warmup to account for initialisation duration
+
+
+    ConvolutionFilter filter = createFilter("average");
+
+
+    checkCudaErrors(cudaMemcpy(filter.d_filter, filter.filterArray, filter.filterBytes, cudaMemcpyHostToDevice));
+
+
+    // warmup to account for initialisation duration
     cudaError_t error = cudaGetLastError();
     if(error != cudaSuccess) {
         fprintf(stderr, "[ERROR] Before launch: %s\n", cudaGetErrorString(error));
         fflush(stderr);
-        exit(1);  // Force exit with error code
+        exit(1);
     }
 
-
-    convolutionKernel<<<dimGrid, dimBlock>>>(dData, width, height, tex, d_filter, filter.kernelSize);
+    convolutionKernel<<<dimGrid, dimBlock>>>(dData, width, height, tex, filter.d_filter, filter.settings.kernelSize);
 
     // Check for launch errors
     if(error != cudaSuccess) {
         fprintf(stderr, "[ERROR] Launch failed: %s\n", cudaGetErrorString(error));
         fflush(stderr);
-        exit(1);  // Force exit with error code
+        exit(1);
     }
 
     error = cudaDeviceSynchronize();
     if(error != cudaSuccess) {
         fprintf(stderr, "[ERROR] Execution failed: %s\n", cudaGetErrorString(error));
         fflush(stderr);
-        exit(1);  // Force exit with error code
+        exit(1);
     }
 
+    size_t sharedMemSize = (BLOCK_SIZE + filter.settings.kernelSize - 1) *
+                      (BLOCK_SIZE + filter.settings.kernelSize - 1) *
+                      sizeof(float);
 
-    // checkCudaErrors(cudaDeviceSynchronize());
+    printf("Debug: Shared memory size required: %zu bytes\n", sharedMemSize);
+    fflush(stdout);
 
+    convolutionSharedKernel<<<dimGrid, dimBlock, sharedMemSize>>>(
+        dData, width, height, tex, filter.d_filter, filter.settings.kernelSize);
 
-    convolutionSharedKernel<<<dimGrid, dimBlock>>>(dData, width, height, tex, d_filter, filter.kernelSize);
+    if(error != cudaSuccess) {
+        fprintf(stderr, "[ERROR] Launch failed: %s\n", cudaGetErrorString(error));
+        fflush(stderr);
+        exit(1);
+    }
+
+    error = cudaDeviceSynchronize();
+    if(error != cudaSuccess) {
+        fprintf(stderr, "[ERROR] Execution failed: %s\n", cudaGetErrorString(error));
+        fflush(stderr);
+        exit(1);
+    }
+
     checkCudaErrors(cudaDeviceSynchronize());
     StopWatchInterface *timer = NULL;
     sdkCreateTimer(&timer);
@@ -366,15 +386,14 @@ void testFilters(int argc, char **argv) {
     printf("\nTesting regular CUDA convolution:\n");
     sdkStartTimer(&timer);
 
-    // for(int i = 0; i < 10; i++) {  // Run multiple iterations for better averaging
-    convolutionKernel<<<dimGrid, dimBlock>>>(dData, width, height, tex, d_filter, filter.kernelSize);
-
-    // }
+    for(int i = 0; i < 10; i++) {
+        convolutionKernel<<<dimGrid, dimBlock>>>(dData, width, height, tex, filter.d_filter, filter.settings.kernelSize);
+    }
     getLastCudaError("Kernel execution failed");
     checkCudaErrors(cudaDeviceSynchronize());
     sdkStopTimer(&timer);
-    // float regularTime = sdkGetTimerValue(&timer) / 10.0f;
-    float regularTime = sdkGetTimerValue(&timer);
+    float regularTime = sdkGetTimerValue(&timer) / 10.0f;
+    // float regularTime = sdkGetTimerValue(&timer);
     printf("Regular CUDA: %.2f ms (%.2f Mpixels/sec)\n",
            regularTime, (width * height / (regularTime / 1000.0f)) / 1e6);
     checkCudaErrors(cudaMemcpy(hOutputRegular, dData, size, cudaMemcpyDeviceToHost));
@@ -383,70 +402,106 @@ void testFilters(int argc, char **argv) {
     printf("\nTesting shared memory CUDA convolution:\n");
     sdkStartTimer(&timer);
 
-    // for(int i = 0; i < 10; i++) {
-    convolutionSharedKernel<<<dimGrid, dimBlock>>>(dData, width, height, tex, d_filter, filter.kernelSize);
-    // }
+    for(int i = 0; i < 10; i++) {
+        convolutionSharedKernel<<<dimGrid, dimBlock, sharedMemSize>>>(
+            dData, width, height, tex, filter.d_filter, filter.settings.kernelSize);
+    }
     getLastCudaError("Kernel execution failed");
     checkCudaErrors(cudaDeviceSynchronize());
     sdkStopTimer(&timer);
-    // float sharedTime = sdkGetTimerValue(&timer) / 10.0f;
-    float sharedTime = sdkGetTimerValue(&timer);
+    float sharedTime = sdkGetTimerValue(&timer) / 10.0f;
+    // float sharedTime = sdkGetTimerValue(&timer);
     printf("Shared Memory CUDA: %.2f ms (%.2f Mpixels/sec)\n",
            sharedTime, (width * height / (sharedTime / 1000.0f)) / 1e6);
     checkCudaErrors(cudaMemcpy(hOutputShared, dData, size, cudaMemcpyDeviceToHost));
     sdkResetTimer(&timer);
+
     // Sequential CPU convolution
         printf("\nTesting sequential CPU convolution:\n");
     sdkStartTimer(&timer);
 
+    // host memory
+    float* hSequentialOutput = (float*)malloc(size);  // Use malloc for CPU memory
+    if (!hSequentialOutput) {
+        fprintf(stderr, "Failed to allocate host memory for sequential output\n");
+        exit(1);
+    }
+
     // Convert filter structure to array for CPU version
-    sequentialConvolution(hData, hOutputSequential, width, height, filterArray, filter.kernelSize);
+    sequentialConvolution(hData, hSequentialOutput, width, height, filter.filterArray, filter.settings.kernelSize);
 
     sdkStopTimer(&timer);
     float sequentialTime = sdkGetTimerValue(&timer);
     printf("Sequential CPU: %.2f ms (%.2f Mpixels/sec)\n",
            sequentialTime, (width * height / (sequentialTime / 1000.0f)) / 1e6);
 
+
+
+
+    // Cleanup pointers
+    sdkDeleteTimer(&timer);
+    delete[] filter.filterArray;
+    checkCudaErrors(cudaFree(filter.d_filter));
+    checkCudaErrors(cudaFree(hOutputRegular));
+    checkCudaErrors(cudaFree(hOutputShared));
+
+    checkCudaErrors(cudaDestroyTextureObject(tex));
+    checkCudaErrors(cudaFree(dData));
+    checkCudaErrors(cudaFreeArray(cuArray));
+    free(hSequentialOutput);
+    free(imagePath);
+}
+
+cudaTextureObject_t createTextureObject(cudaArray *cuArray) {
+    cudaTextureObject_t tex;
+    cudaResourceDesc texRes;
+    memset(&texRes, 0, sizeof(cudaResourceDesc));
+
+    texRes.resType = cudaResourceTypeArray;
+    texRes.res.array.array = cuArray;
+
+    cudaTextureDesc texDescr;
+    memset(&texDescr, 0, sizeof(cudaTextureDesc));
+    // clamp to 0.0f
+    texDescr.addressMode[0] = cudaAddressModeClamp;
+    texDescr.addressMode[1] = cudaAddressModeClamp;
+    texDescr.normalizedCoords = true;
+    texDescr.filterMode = cudaFilterModeLinear;
+    texDescr.addressMode[0] = cudaAddressModeWrap;
+    texDescr.addressMode[1] = cudaAddressModeWrap;
+    texDescr.readMode = cudaReadModeElementType;
+
+    checkCudaErrors(cudaCreateTextureObject(&tex, &texRes, &texDescr, NULL));
+
+    return tex;
+}
+
+void write_outputs(unsigned int size, float *dData, float *hOutputRegular, float *hOutputShared, char *imagePath) {
     // Allocate mem for the result on host side
     float *hOutputData = (float *) malloc(size);
     float *hOutputReg = (float *) malloc(size);
     float *hOutputSha = (float *) malloc(size);
-    float *hOutputSeq = (float *) malloc(size);
+
     // copy result from device to host
     checkCudaErrors(cudaMemcpy(hOutputData, dData, size, cudaMemcpyDeviceToHost));
     checkCudaErrors(cudaMemcpy(hOutputReg, hOutputRegular, size, cudaMemcpyDeviceToHost));
     checkCudaErrors(cudaMemcpy(hOutputSha, hOutputShared, size, cudaMemcpyDeviceToHost));
-    checkCudaErrors(cudaMemcpy(hOutputSeq, hOutputSequential, size, cudaMemcpyDeviceToHost));
     // Write result to file
     char outputFilename[1024];
     strcpy(outputFilename, imagePath);
     strcpy(outputFilename + strlen(imagePath) - 4, "_out.pgm");
     char regOutputFilename[1024];
     strcpy(outputFilename, imagePath);
-    strcpy(outputFilename + strlen(imagePath) - 4, "_out.pgm");
+    strcpy(outputFilename + strlen(imagePath) - 4, "_reg_out.pgm");
     char shaOutputFilename[1024];
     strcpy(outputFilename, imagePath);
-    strcpy(outputFilename + strlen(imagePath) - 4, "_out.pgm");
+    strcpy(outputFilename + strlen(imagePath) - 4, "_sha_out.pgm");
     char seqOutputFilename[1024];
     strcpy(outputFilename, imagePath);
-    strcpy(outputFilename + strlen(imagePath) - 4, "_out.pgm");
+    strcpy(outputFilename + strlen(imagePath) - 4, "_seq_out.pgm");
     sdkSavePGM(outputFilename, hOutputData, width, height);
     sdkSavePGM(regOutputFilename, hOutputReg, width, height);
     sdkSavePGM(shaOutputFilename, hOutputSha, width, height);
-    sdkSavePGM(seqOutputFilename, hOutputSeq, width, height);
+    sdkSavePGM(seqOutputFilename, hSequentialOutput, width, height);
     printf("Wrote '%s'\n", outputFilename);
-
-
-    // Cleanup
-    sdkDeleteTimer(&timer);
-    delete[] filterArray;
-    checkCudaErrors(cudaFree(d_filter));
-    checkCudaErrors(cudaFree(hOutputRegular));
-    checkCudaErrors(cudaFree(hOutputShared));
-    checkCudaErrors(cudaFree(hOutputSequential));
-
-    checkCudaErrors(cudaDestroyTextureObject(tex));
-    checkCudaErrors(cudaFree(dData));
-    checkCudaErrors(cudaFreeArray(cuArray));
-    free(imagePath);
 }
