@@ -1,3 +1,56 @@
+make sure the CMakeLists.txt file and all dependancies build 
+
+Experiments were conducted on a windows machine and so I couldnt verifyable test the run.sh script but it is provided
+
+
+Commands to run:
+
+cmake -B build -S .
+
+cmake --build build --config Release
+
+build\Release\knn.exe
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 Output for experiment run:
 Only SequentialStarting at: 2025-05-04 17:48:18
 Elapsed: 642.917 seconds

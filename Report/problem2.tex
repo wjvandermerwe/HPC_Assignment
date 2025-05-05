@@ -6,10 +6,8 @@ Our implementation contains three versions of the \(K\times K\) convolution:
 \begin{enumerate}
   \item \texttt{convolutionKernel}: each thread reads its full neighbourhood directly from \emph{global memory};
   \item \texttt{convolutionSharedKernel}: a cooperative tiling version that first stages the required image patch in \emph{shared memory};
-  \item \texttt{sequentialConvolution}: a single‑threaded CPU reference.  
+  \item \texttt{sequentialConvolution}: a single-threaded CPU reference.  
 \end{enumerate}
-
-The section below motivates the design choices that appear in the code.
 
 \subsection{Theoretical Exectations}
 \label{ssec:perf_expect}
@@ -21,23 +19,23 @@ The section below motivates the design choices that appear in the code.
   \item \textbf{Global‑memory GPU kernel} exploits massive thread
         parallelism and high device bandwidth, giving tens–hundreds\,×
         speed‑up versus the CPU, but still wastes bandwidth due to
-        redundant loads.
+        redundant loads. \parencite{nvidia2025ada}
   \item \textbf{Shared‑memory GPU kernel} raises arithmetic intensity:
         the same global bytes now feed many more floating‑point
         operations, so the kernel tends to shift from
         \emph{memory‑bound} to \emph{compute-bound}.  In practice we
         observe a further \(2\!\times\!-5\!\times\) acceleration over
-        the global‑memory version on modern GPUs.
+        the global‑memory version on modern GPUs. \parencite{nvidia2025ada}
   \item \textbf{Target Hardware: Nvidia RTX 4080 (Ada Lovelace)} 
 
   \begin{itemize}
     \item \textbf{Compute.} 9\,728 CUDA cores @ $\sim$2.5 GHz  
-          $\Rightarrow$ peak FP32 throughput $\approx$48.7 TFLOP/s.
+          $\Rightarrow$ peak FP32 throughput $\approx$48.7 TFLOP/s. \parencite{techpowerup2025rtx4080}
     \item \textbf{Memory bandwidth.} 16GB GDDR6X on a 256‑bit bus  
           $\Rightarrow$ 716.8 GB/s sustained DRAM bandwidth.
     \item \textbf{On-chip storage.} 128KB L1/shared per SM  
           (up to 100KB usable as shared memory in a single kernel launch);  
-          64 MB chip-wide L2 cache.
+          64 MB chip-wide L2 cache. \parencite{techpowerup2025rtx4080}
   \end{itemize}
 \end{itemize}
 
@@ -47,8 +45,8 @@ The section below motivates the design choices that appear in the code.
   \item \textbf{Filter Construction}: Function to create variable kernel sizes (e.g., 3\,$\times$\,3 and 5\,$\times$\,5) via dynamic arrays.
   \item \textbf{Memory Hierarchy}:
     \begin{itemize}
-      \item Use \emph{texture memory} for read-only image data to exploit spatial locality and hardware filtering.
-      \item Employ \emph{shared memory} for tile-based caching of pixel neighborhoods, reducing global memory transactions. Halo Regions are used: The extra border of pixels each block must load into shared memory to compute convolution at its edges.
+      \item Use \emph{texture memory} for read-only image data to exploit spatial locality and hardware filtering. \parencite{nvidia2025ada}
+      \item Employ \emph{shared memory} for tile-based caching of pixel neighborhoods, reducing global memory transactions. Halo Regions are used: The extra border of pixels each block must load into shared memory to compute convolution at its edges. 
     \end{itemize}
   \item \textbf{Border Handling}: Clamp or wrap pixel coordinates when sampling outside image boundaries to prevent convolution artifacts.
   \item \textbf{Thread Mapping}: Assign one CUDA thread per output pixel; choose block dimensions (e.g., 16\,$\times$\,16) to balance occupancy and shared-memory usage.

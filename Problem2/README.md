@@ -1,3 +1,63 @@
+make sure the CMakeLists.txt file and all dependancies build
+
+Experiments were conducted on a windows machine.
+
+Commands to run:
+
+cmake -B build -S .
+
+cmake --build build --config Release
+
+build\Release\conv.exe
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 Output For Experiment Run:
 
 starting test

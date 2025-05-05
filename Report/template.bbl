@@ -16,5 +16,155 @@
   {}
 \endgroup
 
+
+\refsection{0}
+  \datalist[entry]{nty/global//global/global/global}
+    \entry{article}{article}{}{}
+      \name{author}{4}{}{%
+        {{hash=4ac6422e80cdc0953d9c804c92e0cc35}{%
+           family={Arefin},
+           familyi={A\bibinitperiod},
+           given={Ahmed\bibnamedelima Shamsul},
+           giveni={A\bibinitperiod\bibinitdelim S\bibinitperiod}}}%
+        {{hash=de7201eb3f13fc1888f2c2d90b40d2c4}{%
+           family={Riveros},
+           familyi={R\bibinitperiod},
+           given={Carlos},
+           giveni={C\bibinitperiod}}}%
+        {{hash=1da6fc2aad53dfbe1853b4b6342888d5}{%
+           family={Berretta},
+           familyi={B\bibinitperiod},
+           given={Regina},
+           giveni={R\bibinitperiod}}}%
+        {{hash=c41adcd3138af75393cbd5f38f7c7b1b}{%
+           family={Moscato},
+           familyi={M\bibinitperiod},
+           given={Pablo},
+           giveni={P\bibinitperiod}}}%
+      }
+      \strng{namehash}{e437d52afca6e9227603819bc0bc9d0d}
+      \strng{fullhash}{82d3ec8821d96b624cd62da79ca9842b}
+      \strng{fullhashraw}{82d3ec8821d96b624cd62da79ca9842b}
+      \strng{bibnamehash}{e437d52afca6e9227603819bc0bc9d0d}
+      \strng{authorbibnamehash}{e437d52afca6e9227603819bc0bc9d0d}
+      \strng{authornamehash}{e437d52afca6e9227603819bc0bc9d0d}
+      \strng{authorfullhash}{82d3ec8821d96b624cd62da79ca9842b}
+      \strng{authorfullhashraw}{82d3ec8821d96b624cd62da79ca9842b}
+      \field{sortinit}{A}
+      \field{sortinithash}{2f401846e2029bad6b3ecc16d50031e2}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{PloS one}
+      \field{month}{08}
+      \field{title}{GPU-FS-kNN: a software tool for fast and scalable kNN computation using GPUs}
+      \field{volume}{7}
+      \field{year}{2012}
+      \field{pages}{e44000}
+      \range{pages}{-1}
+      \verb{doi}
+      \verb 10.1371/journal.pone.0044000
+      \endverb
+    \endentry
+    \entry{intel2020quicksort}{online}{}{}
+      \name{author}{1}{}{%
+        {{hash=b7f0fb90e404efb48f8a85a517dec3c9}{%
+           family={{Intel Corporation}},
+           familyi={I\bibinitperiod}}}%
+      }
+      \strng{namehash}{b7f0fb90e404efb48f8a85a517dec3c9}
+      \strng{fullhash}{b7f0fb90e404efb48f8a85a517dec3c9}
+      \strng{fullhashraw}{b7f0fb90e404efb48f8a85a517dec3c9}
+      \strng{bibnamehash}{b7f0fb90e404efb48f8a85a517dec3c9}
+      \strng{authorbibnamehash}{b7f0fb90e404efb48f8a85a517dec3c9}
+      \strng{authornamehash}{b7f0fb90e404efb48f8a85a517dec3c9}
+      \strng{authorfullhash}{b7f0fb90e404efb48f8a85a517dec3c9}
+      \strng{authorfullhashraw}{b7f0fb90e404efb48f8a85a517dec3c9}
+      \field{sortinit}{I}
+      \field{sortinithash}{8d291c51ee89b6cd86bf5379f0b151d8}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{day}{11}
+      \field{month}{3}
+      \field{title}{An Efficient Parallel Three-Way Quicksort Using Intel {C}{+}{+} Compiler And {OpenMP} 4.5 Library}
+      \field{urlday}{5}
+      \field{urlmonth}{5}
+      \field{urlyear}{2025}
+      \field{year}{2020}
+      \field{dateera}{ce}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://www.intel.com/content/www/us/en/developer/articles/technical/an-efficient-parallel-three-way-quicksort-using-intel-c-compiler-and-openmp-45-library.html
+      \endverb
+      \verb{url}
+      \verb https://www.intel.com/content/www/us/en/developer/articles/technical/an-efficient-parallel-three-way-quicksort-using-intel-c-compiler-and-openmp-45-library.html
+      \endverb
+    \endentry
+    \entry{nvidia2025ada}{online}{}{}
+      \name{author}{1}{}{%
+        {{hash=9ad14fae09b617d96cb4af76c555b394}{%
+           family={{NVIDIA Corporation}},
+           familyi={N\bibinitperiod}}}%
+      }
+      \strng{namehash}{9ad14fae09b617d96cb4af76c555b394}
+      \strng{fullhash}{9ad14fae09b617d96cb4af76c555b394}
+      \strng{fullhashraw}{9ad14fae09b617d96cb4af76c555b394}
+      \strng{bibnamehash}{9ad14fae09b617d96cb4af76c555b394}
+      \strng{authorbibnamehash}{9ad14fae09b617d96cb4af76c555b394}
+      \strng{authornamehash}{9ad14fae09b617d96cb4af76c555b394}
+      \strng{authorfullhash}{9ad14fae09b617d96cb4af76c555b394}
+      \strng{authorfullhashraw}{9ad14fae09b617d96cb4af76c555b394}
+      \field{sortinit}{N}
+      \field{sortinithash}{22369a73d5f88983a108b63f07f37084}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{day}{1}
+      \field{month}{5}
+      \field{title}{NVIDIA Ada GPU Architecture Tuning Guide}
+      \field{urlday}{5}
+      \field{urlmonth}{5}
+      \field{urlyear}{2025}
+      \field{version}{12.9}
+      \field{year}{2025}
+      \field{dateera}{ce}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://docs.nvidia.com/cuda/ada-tuning-guide/index.html
+      \endverb
+      \verb{url}
+      \verb https://docs.nvidia.com/cuda/ada-tuning-guide/index.html
+      \endverb
+    \endentry
+    \entry{techpowerup2025rtx4080}{online}{}{}
+      \name{author}{1}{}{%
+        {{hash=c4739b0a7a5b6abe10445d77634027c7}{%
+           family={{TechPowerUp}},
+           familyi={T\bibinitperiod}}}%
+      }
+      \strng{namehash}{c4739b0a7a5b6abe10445d77634027c7}
+      \strng{fullhash}{c4739b0a7a5b6abe10445d77634027c7}
+      \strng{fullhashraw}{c4739b0a7a5b6abe10445d77634027c7}
+      \strng{bibnamehash}{c4739b0a7a5b6abe10445d77634027c7}
+      \strng{authorbibnamehash}{c4739b0a7a5b6abe10445d77634027c7}
+      \strng{authornamehash}{c4739b0a7a5b6abe10445d77634027c7}
+      \strng{authorfullhash}{c4739b0a7a5b6abe10445d77634027c7}
+      \strng{authorfullhashraw}{c4739b0a7a5b6abe10445d77634027c7}
+      \field{sortinit}{T}
+      \field{sortinithash}{9af77f0292593c26bde9a56e688eaee9}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{GeForce RTX 4080 GPU Specifications}
+      \field{urlday}{5}
+      \field{urlmonth}{5}
+      \field{urlyear}{2025}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://www.techpowerup.com/gpu-specs/geforce-rtx-4080.c3888
+      \endverb
+      \verb{url}
+      \verb https://www.techpowerup.com/gpu-specs/geforce-rtx-4080.c3888
+      \endverb
+    \endentry
+  \enddatalist
+\endrefsection
 \endinput
 

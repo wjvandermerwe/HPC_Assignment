@@ -1,12 +1,12 @@
 # Fdb version 4
-["biber template"] 0 "template.bcf" "template.bbl" "template" 1746467842.07537 -1
-  "refs.bib" 1745777172 0 d41d8cd98f00b204e9800998ecf8427e ""
-  "template.bcf" 1746467841 108484 c9d9b7c9ce37b3662c50327176bf4f77 "pdflatex"
+["biber template"] 1746470582.14103 "template.bcf" "template.bbl" "template" 1746470627.3629 0
+  "refs.bib" 1746470456 1259 de433a5e46c0be7f2139f3bdce16271e ""
+  "template.bcf" 1746470627 109101 7ebae7ee519fbfc1f7b4c835dd643f02 "pdflatex"
   (generated)
   "template.bbl"
   "template.blg"
   (rewritten before read)
-["pdflatex"] 1746467840.771 "c:/Users/johan/CLionProjects/HPC_Assignment1/Report/template.tex" "template.pdf" "template" 1746467842.07591 0
+["pdflatex"] 1746470625.98678 "c:/Users/johan/CLionProjects/HPC_Assignment1/Report/template.tex" "template.pdf" "template" 1746470627.36345 0
   "C:/Users/johan/AppData/Local/MiKTeX/fonts/map/pdftex/pdftex.map" 1745776977 82882 2640283f6b61768106a3a0860c97cda0 ""
   "C:/Users/johan/AppData/Local/MiKTeX/fonts/pk/ljfour/jknappen/ec/dpi600/ectt1000.pk" 1746354826 20028 b6f56fb1486c3688c6fa3ccfd98d6bc3 ""
   "C:/Users/johan/AppData/Local/MiKTeX/fonts/pk/ljfour/public/bbold/dpi600/bbold10.pk" 1746354825 12432 0af4e6eb157cc5883647026d757f9fdd ""
@@ -276,14 +276,14 @@
   "images/man_sharpen_reg_out.png" 1746389884 237009 40ceb9c8e104d0809a72842af706d857 ""
   "images/man_sharpen_seq_out.png" 1746389884 260322 f129e2fcecc2738b8ef8be63e7be9b89 ""
   "images/man_sharpen_sha_out.png" 1746389884 237039 4d308a4eb8d779626984be78fa0def63 ""
-  "problem1.aux" 1746467841 5533 892e727ccbb17029e7f997835273df56 "pdflatex"
-  "problem1.tex" 1746467840 8873 2343ec9fdb2c31e389d3577a32dbe8e3 ""
-  "problem2.aux" 1746467841 7166 2db7bb8b893e660319e5e714022fa86d "pdflatex"
-  "problem2.tex" 1746467652 11882 9e4f77e5d8facc07ef5df6c18fb51d0e ""
-  "template.aux" 1746467841 439 f143711dfcd1ed0d4332297b9373311f "pdflatex"
-  "template.bbl" 1746388340 486 76d65a242ec496c9b4361af646ff12cb "biber template"
-  "template.out" 1746467841 2689 442f450e36869a833fcf012776db53ff "pdflatex"
-  "template.run.xml" 1746467841 2327 4c0b2e3e45423ad9903eb012ea346f7e "pdflatex"
+  "problem1.aux" 1746470627 5533 fc227a48acb88755721bf0d33794530c "pdflatex"
+  "problem1.tex" 1746470625 8855 4aadc3f8964c227a91ce72a7440090e4 ""
+  "problem2.aux" 1746470627 7166 720f223d9b4667680bb2cd90affa94ed "pdflatex"
+  "problem2.tex" 1746470580 11954 a33dc417ba7b3243f0b14d5ac0862113 ""
+  "template.aux" 1746470627 1377 520d35e3db4eada098f76fae05fee92b "pdflatex"
+  "template.bbl" 1746470583 6830 6caf1d2a4e2276676013e2d97b7206e8 "biber template"
+  "template.out" 1746470627 2689 442f450e36869a833fcf012776db53ff "pdflatex"
+  "template.run.xml" 1746470627 2327 4c0b2e3e45423ad9903eb012ea346f7e "pdflatex"
   "template.tex" 1746389980 2849 1b8bb7a35905c2cbe3805757342d120e ""
   "witslogo_h.png" 1459237636 148569 a6884844a0be928b393cf1d080874d49 ""
   (generated)

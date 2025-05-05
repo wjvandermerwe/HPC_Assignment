@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.26 (MiKTeX 24.4) (preloaded format=pdflatex 2024.8.8)  5 MAY 2025 19:57
+This is pdfTeX, Version 3.141592653-2.6-1.40.26 (MiKTeX 24.4) (preloaded format=pdflatex 2024.8.8)  5 MAY 2025 20:43
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -1209,48 +1209,48 @@ LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <7> not available
 \openout2 = `problem1.aux'.
 
  (problem1.tex
-LaTeX Font Info:    Trying to load font information for TS1+ptm on input line 4.
+LaTeX Font Info:    Trying to load font information for TS1+ptm on input line 3.
  (C:\Users\johan\AppData\Local\Programs\MiKTeX\tex/latex/psnfss\ts1ptm.fd
 File: ts1ptm.fd 2001/06/04 font definitions for TS1/ptm.
 )
-Underfull \hbox (badness 10000) in paragraph at lines 3--17
+Underfull \hbox (badness 10000) in paragraph at lines 3--14
 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 3--17
+Underfull \hbox (badness 10000) in paragraph at lines 3--14
 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 3--17
+Underfull \hbox (badness 10000) in paragraph at lines 3--14
 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 3--17
+Underfull \hbox (badness 10000) in paragraph at lines 3--14
 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 3--17
+Underfull \hbox (badness 10000) in paragraph at lines 3--14
 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 3--17
+Underfull \hbox (badness 10000) in paragraph at lines 3--14
 
  []
 
-LaTeX Font Info:    Trying to load font information for T1+cmtt on input line 21.
+LaTeX Font Info:    Trying to load font information for T1+cmtt on input line 18.
 (C:\Users\johan\AppData\Local\Programs\MiKTeX\tex/latex/base\t1cmtt.fd
 File: t1cmtt.fd 2023/04/13 v2.5m Standard LaTeX font definitions
 )
 
-<witslogo_h.png, id=66, 1030.85126pt x 640.3925pt>
+<witslogo_h.png, id=70, 1030.85126pt x 640.3925pt>
 File: witslogo_h.png Graphic file (type png)
 <use witslogo_h.png>
-Package pdftex.def Info: witslogo_h.png  used on input line 22.
+Package pdftex.def Info: witslogo_h.png  used on input line 19.
 (pdftex.def)             Requested size: 82.46977pt x 51.23244pt.
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
@@ -1263,11 +1263,11 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 
  <./witslogo_h.png>]
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <10> not available
-(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 49.
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 46.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <7.4> not available
-(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 49.
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 46.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <6> not available
-(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 49.
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 46.
 
 
 [2]
@@ -1278,12 +1278,12 @@ LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <6> not available
 \openout2 = `problem2.aux'.
 
  (problem2.tex
-Overfull \hbox (11.70573pt too wide) in paragraph at lines 21--25
+Overfull \hbox (11.70573pt too wide) in paragraph at lines 19--23
 []\T1/ptm/b/n/10 Global[]memory GPU ker-nel \T1/ptm/m/n/10 ex-ploits mas-sive thread par-al-lelism and high de-vice band-width, giv-ing tens^^Uhundreds\TS1/ptm/m/n/10 Ö
  []
 
 
-Overfull \hbox (2.49835pt too wide) in paragraph at lines 25--31
+Overfull \hbox (2.49835pt too wide) in paragraph at lines 23--29
 []\T1/ptm/b/n/10 Shared[]memory GPU ker-nel \T1/ptm/m/n/10 raises arith-metic in-ten-sity: the same global bytes now feed many more floating[]point
  []
 
@@ -1295,152 +1295,154 @@ Overfull \hbox (2.49835pt too wide) in paragraph at lines 25--31
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
-<images/image21.png, id=116, 513.92pt x 513.92pt>
+<images/image21.png, id=130, 513.92pt x 513.92pt>
 File: images/image21.png Graphic file (type png)
 <use images/image21.png>
-Package pdftex.def Info: images/image21.png  used on input line 127.
+Package pdftex.def Info: images/image21.png  used on input line 125.
 (pdftex.def)             Requested size: 109.93942pt x 109.93387pt.
-<images/image21_emboss_sha_out.png, id=117, 513.92pt x 513.92pt>
+<images/image21_emboss_sha_out.png, id=131, 513.92pt x 513.92pt>
 File: images/image21_emboss_sha_out.png Graphic file (type png)
 <use images/image21_emboss_sha_out.png>
-Package pdftex.def Info: images/image21_emboss_sha_out.png  used on input line 130.
+Package pdftex.def Info: images/image21_emboss_sha_out.png  used on input line 128.
 (pdftex.def)             Requested size: 109.93942pt x 109.93387pt.
-<images/image21_sharpen_sha_out.png, id=118, 513.92pt x 513.92pt>
+<images/image21_sharpen_sha_out.png, id=132, 513.92pt x 513.92pt>
 File: images/image21_sharpen_sha_out.png Graphic file (type png)
 <use images/image21_sharpen_sha_out.png>
-Package pdftex.def Info: images/image21_sharpen_sha_out.png  used on input line 133.
+Package pdftex.def Info: images/image21_sharpen_sha_out.png  used on input line 131.
 (pdftex.def)             Requested size: 109.93942pt x 109.93387pt.
-<images/image21_average_sha_out.png, id=119, 513.92pt x 513.92pt>
+<images/image21_average_sha_out.png, id=133, 513.92pt x 513.92pt>
 File: images/image21_average_sha_out.png Graphic file (type png)
 <use images/image21_average_sha_out.png>
-Package pdftex.def Info: images/image21_average_sha_out.png  used on input line 136.
+Package pdftex.def Info: images/image21_average_sha_out.png  used on input line 134.
 (pdftex.def)             Requested size: 109.93942pt x 109.93387pt.
 
+LaTeX Warning: `h' float specifier changed to `ht'.
 
-[6]
 File: images/image21.png Graphic file (type png)
 <use images/image21.png>
-Package pdftex.def Info: images/image21.png  used on input line 144.
+Package pdftex.def Info: images/image21.png  used on input line 142.
 (pdftex.def)             Requested size: 109.93942pt x 109.93387pt.
-<images/image21_emboss_reg_out.png, id=135, 513.92pt x 513.92pt>
+<images/image21_emboss_reg_out.png, id=134, 513.92pt x 513.92pt>
 File: images/image21_emboss_reg_out.png Graphic file (type png)
 <use images/image21_emboss_reg_out.png>
-Package pdftex.def Info: images/image21_emboss_reg_out.png  used on input line 147.
+Package pdftex.def Info: images/image21_emboss_reg_out.png  used on input line 145.
 (pdftex.def)             Requested size: 109.93942pt x 109.93387pt.
-<images/image21_sharpen_reg_out.png, id=136, 513.92pt x 513.92pt>
+<images/image21_sharpen_reg_out.png, id=135, 513.92pt x 513.92pt>
 File: images/image21_sharpen_reg_out.png Graphic file (type png)
 <use images/image21_sharpen_reg_out.png>
-Package pdftex.def Info: images/image21_sharpen_reg_out.png  used on input line 150.
+Package pdftex.def Info: images/image21_sharpen_reg_out.png  used on input line 148.
 (pdftex.def)             Requested size: 109.93942pt x 109.93387pt.
-<images/image21_average_reg_out.png, id=137, 513.92pt x 513.92pt>
+<images/image21_average_reg_out.png, id=136, 513.92pt x 513.92pt>
 File: images/image21_average_reg_out.png Graphic file (type png)
 <use images/image21_average_reg_out.png>
-Package pdftex.def Info: images/image21_average_reg_out.png  used on input line 153.
+Package pdftex.def Info: images/image21_average_reg_out.png  used on input line 151.
 (pdftex.def)             Requested size: 109.93942pt x 109.93387pt.
-
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
 File: images/image21.png Graphic file (type png)
 <use images/image21.png>
-Package pdftex.def Info: images/image21.png  used on input line 161.
+Package pdftex.def Info: images/image21.png  used on input line 159.
 (pdftex.def)             Requested size: 109.93942pt x 109.93387pt.
-<images/image21_emboss_seq_out.png, id=138, 513.92pt x 513.92pt>
+<images/image21_emboss_seq_out.png, id=137, 513.92pt x 513.92pt>
 File: images/image21_emboss_seq_out.png Graphic file (type png)
 <use images/image21_emboss_seq_out.png>
-Package pdftex.def Info: images/image21_emboss_seq_out.png  used on input line 164.
+Package pdftex.def Info: images/image21_emboss_seq_out.png  used on input line 162.
 (pdftex.def)             Requested size: 109.93942pt x 109.93387pt.
-<images/image21_sharpen_seq_out.png, id=139, 513.92pt x 513.92pt>
+<images/image21_sharpen_seq_out.png, id=138, 513.92pt x 513.92pt>
 File: images/image21_sharpen_seq_out.png Graphic file (type png)
 <use images/image21_sharpen_seq_out.png>
-Package pdftex.def Info: images/image21_sharpen_seq_out.png  used on input line 167.
+Package pdftex.def Info: images/image21_sharpen_seq_out.png  used on input line 165.
 (pdftex.def)             Requested size: 109.93942pt x 109.93387pt.
-<images/image21_average_seq_out.png, id=140, 513.92pt x 513.92pt>
+<images/image21_average_seq_out.png, id=139, 513.92pt x 513.92pt>
 File: images/image21_average_seq_out.png Graphic file (type png)
 <use images/image21_average_seq_out.png>
-Package pdftex.def Info: images/image21_average_seq_out.png  used on input line 170.
+Package pdftex.def Info: images/image21_average_seq_out.png  used on input line 168.
 (pdftex.def)             Requested size: 109.93942pt x 109.93387pt.
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
-<images/man.png, id=141, 513.92pt x 513.92pt>
+<images/man.png, id=140, 513.92pt x 513.92pt>
 File: images/man.png Graphic file (type png)
 <use images/man.png>
-Package pdftex.def Info: images/man.png  used on input line 180.
+Package pdftex.def Info: images/man.png  used on input line 178.
 (pdftex.def)             Requested size: 109.93942pt x 109.93387pt.
-<images/man_emboss_sha_out.png, id=142, 513.92pt x 513.92pt>
+<images/man_emboss_sha_out.png, id=141, 513.92pt x 513.92pt>
 File: images/man_emboss_sha_out.png Graphic file (type png)
 <use images/man_emboss_sha_out.png>
-Package pdftex.def Info: images/man_emboss_sha_out.png  used on input line 183.
+Package pdftex.def Info: images/man_emboss_sha_out.png  used on input line 181.
 (pdftex.def)             Requested size: 109.93942pt x 109.93387pt.
-<images/man_sharpen_sha_out.png, id=143, 513.92pt x 513.92pt>
+<images/man_sharpen_sha_out.png, id=142, 513.92pt x 513.92pt>
 File: images/man_sharpen_sha_out.png Graphic file (type png)
 <use images/man_sharpen_sha_out.png>
-Package pdftex.def Info: images/man_sharpen_sha_out.png  used on input line 186.
+Package pdftex.def Info: images/man_sharpen_sha_out.png  used on input line 184.
 (pdftex.def)             Requested size: 109.93942pt x 109.93387pt.
-<images/man_average_sha_out.png, id=144, 513.92pt x 513.92pt>
+<images/man_average_sha_out.png, id=143, 513.92pt x 513.92pt>
 File: images/man_average_sha_out.png Graphic file (type png)
 <use images/man_average_sha_out.png>
-Package pdftex.def Info: images/man_average_sha_out.png  used on input line 189.
+Package pdftex.def Info: images/man_average_sha_out.png  used on input line 187.
 (pdftex.def)             Requested size: 109.93942pt x 109.93387pt.
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
 File: images/man.png Graphic file (type png)
 <use images/man.png>
-Package pdftex.def Info: images/man.png  used on input line 197.
+Package pdftex.def Info: images/man.png  used on input line 195.
 (pdftex.def)             Requested size: 109.93942pt x 109.93387pt.
-<images/man_emboss_reg_out.png, id=145, 513.92pt x 513.92pt>
+<images/man_emboss_reg_out.png, id=144, 513.92pt x 513.92pt>
 File: images/man_emboss_reg_out.png Graphic file (type png)
 <use images/man_emboss_reg_out.png>
-Package pdftex.def Info: images/man_emboss_reg_out.png  used on input line 200.
+Package pdftex.def Info: images/man_emboss_reg_out.png  used on input line 198.
 (pdftex.def)             Requested size: 109.93942pt x 109.93387pt.
-<images/man_sharpen_reg_out.png, id=146, 513.92pt x 513.92pt>
+<images/man_sharpen_reg_out.png, id=145, 513.92pt x 513.92pt>
 File: images/man_sharpen_reg_out.png Graphic file (type png)
 <use images/man_sharpen_reg_out.png>
-Package pdftex.def Info: images/man_sharpen_reg_out.png  used on input line 203.
+Package pdftex.def Info: images/man_sharpen_reg_out.png  used on input line 201.
 (pdftex.def)             Requested size: 109.93942pt x 109.93387pt.
-<images/man_average_reg_out.png, id=147, 513.92pt x 513.92pt>
+<images/man_average_reg_out.png, id=146, 513.92pt x 513.92pt>
 File: images/man_average_reg_out.png Graphic file (type png)
 <use images/man_average_reg_out.png>
-Package pdftex.def Info: images/man_average_reg_out.png  used on input line 206.
+Package pdftex.def Info: images/man_average_reg_out.png  used on input line 204.
 (pdftex.def)             Requested size: 109.93942pt x 109.93387pt.
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
 File: images/man.png Graphic file (type png)
 <use images/man.png>
-Package pdftex.def Info: images/man.png  used on input line 214.
+Package pdftex.def Info: images/man.png  used on input line 212.
 (pdftex.def)             Requested size: 109.93942pt x 109.93387pt.
-<images/man_emboss_seq_out.png, id=148, 513.92pt x 513.92pt>
+<images/man_emboss_seq_out.png, id=147, 513.92pt x 513.92pt>
 File: images/man_emboss_seq_out.png Graphic file (type png)
 <use images/man_emboss_seq_out.png>
-Package pdftex.def Info: images/man_emboss_seq_out.png  used on input line 217.
+Package pdftex.def Info: images/man_emboss_seq_out.png  used on input line 215.
 (pdftex.def)             Requested size: 109.93942pt x 109.93387pt.
-<images/man_sharpen_seq_out.png, id=149, 513.92pt x 513.92pt>
+<images/man_sharpen_seq_out.png, id=148, 513.92pt x 513.92pt>
 File: images/man_sharpen_seq_out.png Graphic file (type png)
 <use images/man_sharpen_seq_out.png>
-Package pdftex.def Info: images/man_sharpen_seq_out.png  used on input line 220.
+Package pdftex.def Info: images/man_sharpen_seq_out.png  used on input line 218.
 (pdftex.def)             Requested size: 109.93942pt x 109.93387pt.
-<images/man_average_seq_out.png, id=150, 513.92pt x 513.92pt>
+<images/man_average_seq_out.png, id=149, 513.92pt x 513.92pt>
 File: images/man_average_seq_out.png Graphic file (type png)
 <use images/man_average_seq_out.png>
-Package pdftex.def Info: images/man_average_seq_out.png  used on input line 223.
+Package pdftex.def Info: images/man_average_seq_out.png  used on input line 221.
 (pdftex.def)             Requested size: 109.93942pt x 109.93387pt.
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
 )
 
-[7 <./images/image21.png (PNG copy)> <./images/image21_emboss_sha_out.png (PNG copy)> <./images/image21_sharpen_sha_out.png (PNG copy)> <./images/image21_average_sha_out.png (PNG copy)>]
+[6]
 
-[8 <./images/image21_emboss_reg_out.png (PNG copy)> <./images/image21_sharpen_reg_out.png (PNG copy)> <./images/image21_average_reg_out.png (PNG copy)> <./images/image21_emboss_seq_out.png (PNG copy)> <./images/image21_sharpen_seq_out.png (PNG copy)> <./images/image21_average_seq_out.png (PNG copy)> <./images/man.png (PNG copy)> <./images/man_emboss_sha_out.png (PNG copy)> <./images/man_sharpen_sha_out.png (PNG copy)> <./images/man_average_sha_out.png (PNG copy)>]
+[7 <./images/image21.png (PNG copy)> <./images/image21_emboss_sha_out.png (PNG copy)> <./images/image21_sharpen_sha_out.png (PNG copy)> <./images/image21_average_sha_out.png (PNG copy)> <./images/image21_emboss_reg_out.png (PNG copy)> <./images/image21_sharpen_reg_out.png (PNG copy)> <./images/image21_average_reg_out.png (PNG copy)>]
 
-[9 <./images/man_emboss_reg_out.png (PNG copy)> <./images/man_sharpen_reg_out.png (PNG copy)> <./images/man_average_reg_out.png (PNG copy)> <./images/man_emboss_seq_out.png (PNG copy)> <./images/man_sharpen_seq_out.png (PNG copy)> <./images/man_average_seq_out.png (PNG copy)>]
+[8 <./images/image21_emboss_seq_out.png (PNG copy)> <./images/image21_sharpen_seq_out.png (PNG copy)> <./images/image21_average_seq_out.png (PNG copy)> <./images/man.png (PNG copy)> <./images/man_emboss_sha_out.png (PNG copy)> <./images/man_sharpen_sha_out.png (PNG copy)> <./images/man_average_sha_out.png (PNG copy)> <./images/man_emboss_reg_out.png (PNG copy)> <./images/man_sharpen_reg_out.png (PNG copy)> <./images/man_average_reg_out.png (PNG copy)>]
 
-LaTeX Warning: Empty bibliography on input line 23.
+[9 <./images/man_emboss_seq_out.png (PNG copy)> <./images/man_sharpen_seq_out.png (PNG copy)> <./images/man_average_seq_out.png (PNG copy)>]
 
-(template.aux (problem1.aux) (problem2.aux))
+[10
+
+
+] (template.aux (problem1.aux) (problem2.aux))
  ***********
 LaTeX2e <2024-06-01> patch level 2
 L3 programming layer <2024-07-20>
@@ -1456,17 +1458,17 @@ Package logreq Info: Writing requests to 'template.run.xml'.
 
  ) ) 
 Here is how much of TeX's memory you used:
- 36020 strings out of 473899
- 686230 string characters out of 5726501
- 1948960 words of memory out of 5000000
- 58227 multiletter control sequences out of 15000+600000
- 623486 words of font info for 144 fonts, out of 8000000 for 9000
+ 36259 strings out of 473899
+ 691384 string characters out of 5726501
+ 1953960 words of memory out of 5000000
+ 58460 multiletter control sequences out of 15000+600000
+ 627624 words of font info for 145 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 102i,16n,107p,983b,1783s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 102i,16n,107p,981b,1783s stack positions out of 10000i,1000n,20000p,200000b,200000s
  <C:\Users\johan\AppData\Local\MiKTeX\fonts/pk/ljfour/public/bbold/dpi600\bbold10.pk> <C:\Users\johan\AppData\Local\MiKTeX\fonts/pk/ljfour/jknappen/ec/dpi600\ectt1000.pk><C:/Users/johan/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmex10.pfb><C:/Users/johan/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmmi10.pfb><C:/Users/johan/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmsy10.pfb><C:/Users/johan/AppData/Local/Programs/MiKTeX/fonts/type1/urw/times/utmb8a.pfb><C:/Users/johan/AppData/Local/Programs/MiKTeX/fonts/type1/urw/times/utmr8a.pfb><C:/Users/johan/AppData/Local/Programs/MiKTeX/fonts/type1/urw/times/utmri8a.pfb>
-Output written on template.pdf (9 pages, 2675893 bytes).
+Output written on template.pdf (10 pages, 2688796 bytes).
 PDF statistics:
- 284 PDF objects out of 1000 (max. 8388607)
- 60 named destinations out of 1000 (max. 500000)
+ 318 PDF objects out of 1000 (max. 8388607)
+ 66 named destinations out of 1000 (max. 500000)
  238 words of extra memory for PDF output out of 10000 (max. 10000000)
 
