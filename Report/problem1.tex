@@ -1,0 +1,113 @@
+\section{Problem1: K‑NN Parallel Sorting using OpenMP}
+\subsection{Theoretical Expectations}
+Computational Cost of the Brute-Force K-NN
+The brute-force K-Nearest Neighbors algorithm has a well-known O(n²) time complexity (assuming on the order of n query points and n reference points for simplicity) due to the need for exhaustive distance comparisons. In our setting with m query points and n reference points, the algorithm must compute m × n distances in total, and for each query sort those n distances to find the k smallest. The distance computation phase alone costs O(m · n · d) operations if each distance is in a d-dimensional space (essentially O(n) per query, so O(m · n) overall for fixed d)
+researchgate.net
+\\\\
+The subsequent sorting phase, if done by full sort, costs O(m · n log n) (each of the m queries sorting n distances). Thus, the total work is O(m · n · d + m · n log n), which in the typical case of m and n being of the same order simplifies to O(n²) complexity for large n
+researchgate.net
+\\\\
+Sequential vs Parallel Execution: With the serial implementation, the entire O(n²) workload is executed on a single core, leading to long runtimes that grow quadratically with data size. The parallel implementation does not reduce the overall algorithmic complexity – the same O(n²) operations are performed – but it aims to reduce the wall-clock time by sharing the work across multiple processors.
+\\\\
+Essentially, parallelism tackles the brute-force cost through concurrency: multiple distance computations and sorts happen at the same time on different threads. In the ideal case (no overhead and perfect load balance), if p threads are available, the wall-clock time could be roughly O(n² / p). In our approach, the distance computations for different queries are distributed across threads, and likewise the sorting of each query’s result is done in parallel across queries. This means the time for the distance computation stage is roughly the maximum time any single thread spends on its share of the distances, and similarly for sorting. Since each query’s K-NN task is independent, the brute-force method is “embarrassingly parallel” in that sense – there is no need for communication between threads during the heavy computations
+researchgate.net
+\\\\
+The distance computation stage is memory-access heavy (streaming through the data), whereas sorting is more CPU intensive; parallelization helps both by utilizing multiple cores for both stages. It’s important to note that while parallelization yields a faster runtime, it doesn’t change the fact that brute-force K-NN does not scale well to extremely large n. The O(n²) growth will eventually become intractable even with many threads, which is why in practice one would consider algorithmic improvements (such as spatial indexing trees, clustering, or approximate methods) for very large datasets. 
+\\\\
+
+\subsection{Design Considerations}
+\subsubsection{Data Structures}
+\begin{itemize}
+\item \textbf{Features}: Stored as \texttt{std\:\:vector<std\:\:vector>}, with each inner vector of length \texttt{FEATURE\_DIM}. This contiguous layout enables cache-friendly, coalesced memory accesses.
+\item \textbf{FeaturePairs}: A \texttt{std\:\:vector<std\:\:pair<float,int>>} representing distance-label pairs.  Separating distances from labels allows efficient sorting by distance while preserving label information.
+\end{itemize}
+
+\subsubsection{Partition and Sorting Schemes}
+\begin{itemize}
+\item \textbf{Lomuto Partition (single pivot at end) (used)}:
+\begin{itemize}
+\item Pivot: last element.
+\item Maintains index \texttt{i} such that all \texttt{arr[lo..i-1] < pivot}.\item Swaps pivot into its correct position.
+\item Pros: simple implementation.  Cons: poor on duplicates or sorted data.
+\end{itemize}
+\item \textbf{Hoare Partition (pivot at middle) (not used but common with quicksort)}:
+\begin{itemize}
+\item Pivot: middle element of segment.
+\item Uses two pointers \texttt{i} and \texttt{j}, swapping until they cross.
+\item Pros: fewer swaps on average.  Cons: more complex, pivot final position not explicit.
+\end{itemize}
+\item \textbf{Quick-Sort Variants}:
+\begin{enumerate}
+\item \emph{Sequential Quick‑Sort}: standard recursive implementation.
+\item \emph{Parallel Sections Sort}: after partition, spawns two OpenMP sections to sort each half concurrently.
+\item \emph{Parallel Task Sort}: uses \texttt{\#pragma omp task} for recursive, dynamic parallelism within the existing thread team.
+\end{enumerate}
+\end{itemize}
+
+\subsubsection{Distance Computation}
+\begin{itemize}
+\item \textbf{Euclidean Distance}: for features $\mathbf{a},\mathbf{b}\in\mathbb{R}^d$, computed as:
+\begin{verbatim}
+float compute_distance(const Feature &a, const Feature &b) {
+    float sum = 0;
+    for (size_t i = 0; i < a.size(); ++i)
+    sum += (b[i] - a[i]) * (b[i] - a[i]);
+    return std::sqrt(sum);
+}
+\end{verbatim}
+\item \textbf{Parallelization}: optionally annotated with \texttt{\#pragma omp parallel for} to distribute distance loops across threads, trading off overhead vs. throughput.
+\end{itemize}
+
+\subsubsection{Timing and Logging}
+\begin{itemize}
+\item \textbf{Induvidual Function logging}: is implemented to account for distance and sorting times as well as overall time, effort is made to avoid cumulative cpu wall clock logging, by accounting for induvidual thread time.
+\item \textbf{Granularity}: separate accumulators for distance and sorting phases (using reduction in the parallel case); total loop time measured across all K‑NN steps.
+\end{itemize}
+
+\subsection{Experimental Workflow}
+The Experiments were run in six different combinations as to see effects of the induvidual contributions of both the distance and sorting computations. Table \ref{tab:knn_metrics} Shows Results. The outline of the experiment runs are the following four steps:
+\begin{enumerate}
+    \item Setup and Configuration:
+    \item Data Loading (load and reshape training/testing feature):
+    \item K-NN Prediction Loop (for each variant):
+    \begin{enumerate}[label=\alph*.]
+        \item Warm up: start timer with prepared datasets.
+        \item Distance Computation: sequential or \texttt{parallel for} accumulation into \texttt{m.dist}.
+        \item Sorting: invoke \texttt{seq\_sort}, \texttt{par\_sec\_sort}, or \texttt{par\_task\_sort}, accumulating into \texttt{m.sort}.
+        \item Voting: count top-K labels via \texttt{unordered\_map}, select most frequent.
+        \item Timing End: call \texttt{timer\_end(start,name)} to record \texttt{m.total}.
+    \end{enumerate}
+    \item \textbf{Accuracy Evaluation}:
+    \begin{itemize}
+        \item Compare predictions against true labels to compute \texttt{m.accuracy}.
+    \end{itemize}
+    \item \textbf{Results}:
+    \begin{table}[h]
+        \centering
+        \begin{tabular}{lccccc}
+          \toprule
+          \textbf{Implementation} & \textbf{Accuracy} & \textbf{Total (s)} & \textbf{Speedup×} & \textbf{Dist (s)} & \textbf{Sort (s)} \\
+          \midrule
+          Only Sequential                                   & 0.78 & 635.68 & 1.00  & 561.01 &  74.58 \\
+          Sequential Distances, Parallel Sections Sort      & 0.78 & 642.84 & 1.01  & 563.86 &  63.36 \\
+          Sequential Distances, Parallel Tasks Sort         & 0.78 & 1042.97 & 0.61  & 567.14 & 475.73 \\
+          Parallel Distances, Sequential Sort               & 0.78 &  57.29 & 11.10 & 51.47 & 5.87 \\
+          Parallel Distances, Parallel Tasks Sort           & 0.78 &  60.66 & 10.48 & 51.37 & 9.56 \\
+          Parallel Distances, Parallel Sections Sort        & 0.78 &  57.59 & 11.04 &  51.39 & 6.54 \\
+          \bottomrule
+        \end{tabular}
+        \caption{K-NN performance metrics for each implementation variant}
+        \label{tab:knn_metrics}
+      \end{table}
+      
+    \item \textbf{Analysis}:
+    \begin{itemize}
+        \item Accuracy is constant (0.78) across every variant, all changes purely affect performance.
+        \item Parallelizing the distance-computation phase yields the biggest win. Moving from sequential distances (total 643 s) to parallel distances (with sequential sort) cuts the total down to 57.6s which is an 11x speedup, the distance calculation dominates runtime.
+        \item “Parallel tasks” sort actually slows things down (total 60.9 s with parallel distances, or 1091 s if distances stay sequential), due to the overhead of task management outweighing any micro-speedups in sorting.
+        \item “Parallel sections” sort alongside parallel distances still runs in 57.9 s (11.1x), nearly identical to keeping the sort sequential, because the sort cost is small relative to distance.
+    \end{itemize}
+\end{enumerate}
+
+% End of document
+

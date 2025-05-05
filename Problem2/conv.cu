@@ -11,10 +11,7 @@
 #include <cuda_runtime.h>
 #include <helper_functions.h>
 #include <helper_cuda.h>
-
-void testFiltersOnImage(const char *filename);
-cudaTextureObject_t createTextureObject(int width, int height, float *hData, unsigned int size);
-void writeOutputs(unsigned int size, float *dData, float *hOutputRegular, float *hOutputShared, float *hSequentialOutput, char *imagePath, int height, int width);
+#include <iomanip>
 
 // Constants
 #define MAX_KERNEL_SIZE 32
@@ -40,15 +37,46 @@ struct MethodTime {
 };
 
 struct Experiment {
-    char* image_name;
-    char* filter_name;
+    const char* image_name;
+    const char* filter_name;
     MethodTime times;
 };
 
-struct Metrics {
-    std::vector<Experiment> experiments;
-    MethodTime total_times;
+struct TextureReturn {
+    cudaTextureObject_t tex;
+    cudaArray* cuArray;
 };
+
+struct KernelConfig {
+    dim3 dimBlock;
+    dim3 dimGrid;
+    size_t sharedMemSize;
+};
+
+struct ExperimentConfig {
+    unsigned int size;
+    unsigned int width;
+    unsigned int height;
+    ConvolutionFilter filter;
+    cudaTextureObject_t tex;
+    float *d_data;
+    StopWatchInterface *timer;
+    KernelConfig kernelConfig;
+    float *h_data = nullptr;
+};
+
+struct ExperimentReturn {
+    float *output;
+    double time;
+};
+
+std::vector<Experiment> testFiltersOnImage(const char *filename, int argc, char **argv);
+TextureReturn createTextureObject(int width, int height, float *hData, unsigned int size);
+void writeOutputs(unsigned int size, float *dData, float *hOutputRegular, float *hOutputShared, float *hSequentialOutput, char *imagePath, const char *filterName, int height, int width);
+ExperimentReturn runConvKernel(ExperimentConfig params);
+ExperimentReturn runShared(ExperimentConfig params);
+ExperimentReturn runConvKernelShared(ExperimentConfig params);
+ExperimentReturn runSequentialConv(ExperimentConfig params);
 
 // Function to create some common filters
 ConvolutionFilter createFilter(const char *filterType) {
@@ -134,7 +162,7 @@ __global__ void convolutionKernel(float *outputData, int width, int height,
 __global__ void convolutionSharedKernel(float *outputData, int width, int height,
                                        cudaTextureObject_t tex, const float* filter, 
                                        int filterSize) {
-    extern __shared__ float sharedMem[];
+    extern __shared__ float sharedMem[]; //shared buffer
     
     int tx = threadIdx.x;
     int ty = threadIdx.y;
@@ -143,24 +171,22 @@ __global__ void convolutionSharedKernel(float *outputData, int width, int height
     int x = bx + tx;
     int y = by + ty;
 
-    // Calculate shared memory dimensions
+
     const int sharedDim = BLOCK_SIZE + filterSize - 1;
     const int filterRadius = filterSize / 2;
-
-    // Bounds checking helper
+    // check bound -> index errors
     auto inBounds = [width, height](int x, int y) {
         return x >= 0 && x < width && y >= 0 && y < height;
     };
 
-    // Initialize shared memory to 0
     for (int i = ty; i < sharedDim; i += BLOCK_SIZE) {
         for (int j = tx; j < sharedDim; j += BLOCK_SIZE) {
             sharedMem[i * sharedDim + j] = 0.0f;
         }
     }
+    // barrier after shared memory init
     __syncthreads();
 
-    // Load the main block plus halo regions
     for (int dy = -filterRadius; dy <= filterRadius; dy++) {
         int sy = ty + dy + filterRadius;
         int gy = y + dy;
@@ -178,9 +204,10 @@ __global__ void convolutionSharedKernel(float *outputData, int width, int height
             }
         }
     }
+    // barrier after local halo calc in shared memory
     __syncthreads();
 
-    // Compute convolution only for valid output pixels
+    // check for bounded shared memory addresses and compute convolution only on that
     if (x < width && y < height) {
         float sum = 0.0f;
         for (int fy = 0; fy < filterSize; fy++) {
@@ -225,27 +252,54 @@ void sequentialConvolution(float *input, float *output, int width, int height,
     }
 }
 
+void printExperimentTable(const std::vector<Experiment>& results) {
+    // Header
+    std::cout << std::left
+              << std::setw(20) << "Image"
+              << std::setw(15) << "Filter"
+              << std::setw(12) << "Regular"
+              << std::setw(12) << "Shared"
+              << std::setw(12) << "Sequential"
+              << "\n";
+    std::cout << std::string(71, '-') << "\n";
+
+    for (const auto& e : results) {
+        std::cout << std::left
+                  << std::setw(20) << e.image_name
+                  << std::setw(15) << e.filter_name
+                  << std::setw(12) << e.times.totReg
+                  << std::setw(12) << e.times.totSha
+                  << std::setw(12) << e.times.totSeq
+                  << "\n";
+    }
+}
+
 int main(int argc, char **argv) {
     printf("starting test\n");
 
     const char* files[] = {
-        "image1.pgm",
-        "image2.pgm",
-        "image3.pgm"
+        "image21.pgm",
+        "lena_bw.pgm",
+        "man.pgm",
+        "mandrill.pgm",
+        "teapot512.pgm"
     };
     int nFiles     = sizeof(files) / sizeof(files[0]);
-    double totReg  = 0.0;
-    double totSha  = 0.0;
-    double totSeq  = 0.0;
+    const char* filters[] = { "emboss", "sharpen", "average" };
+    int nFilts = sizeof(filters)/sizeof(*filters);
+    std::vector<Experiment> results;
+    results.reserve(nFiles * nFilts);
     for(int idx = 0; idx < nFiles; ++idx) {
-        testFiltersOnImage(files[idx]);
+        auto batch = testFiltersOnImage(files[idx], argc, argv);
+        results.insert(results.end(), batch.begin(), batch.end());
     }
+    printExperimentTable(results);
     printf("test completed, returned\n");
 
     exit(EXIT_SUCCESS);
 }
 
-void testFiltersOnImage(const char *filename, double totReg, double totSha, double totSeq) {
+std::vector<Experiment> testFiltersOnImage(const char *filename, int argc, char **argv) {
     char imageFilename[1024];
     strcpy(imageFilename, filename);
     strcpy(imageFilename + strlen(filename) - 4, "_in.pgm");
@@ -274,7 +328,7 @@ void testFiltersOnImage(const char *filename, double totReg, double totSha, doub
     int nFilts     = sizeof(filters) / sizeof(filters[0]);
     ConvolutionFilter filtersArr[3];
     for (int i = 0; i < nFilts; ++i) {
-        filtersArr[i] = createFilter(filterNames[i]);
+        filtersArr[i] = createFilter(filters[i]);
         checkCudaErrors(cudaMemcpy(
             filtersArr[i].d_filter,
             filtersArr[i].filterArray,
@@ -282,7 +336,7 @@ void testFiltersOnImage(const char *filename, double totReg, double totSha, doub
             cudaMemcpyHostToDevice
         ));
     }
-
+    std::vector<Experiment> experiments(3);
     for (int idx = 0; idx < nFilts; ++idx) {
         ConvolutionFilter filter = filtersArr[idx];
         // image data
@@ -290,14 +344,7 @@ void testFiltersOnImage(const char *filename, double totReg, double totSha, doub
         checkCudaErrors(cudaMalloc((void **)&dData, size));
 
         // move image into texture memory (spatial locality benefits)
-        cudaTextureObject_t tex = createTextureObject(width, height, hData, size);
-        // allocate device memory for result
-        float *hOutputRegular = NULL; // device pointers
-        float *hOutputShared = NULL;
-        checkCudaErrors(cudaMalloc((void **)&hOutputRegular, size));
-        checkCudaErrors(cudaMalloc((void **)&hOutputShared, size));
-
-
+        TextureReturn tex_obj = createTextureObject(width, height, hData, size);
 
         dim3 dimBlock(BLOCK_SIZE, BLOCK_SIZE);
         dim3 dimGrid(
@@ -310,62 +357,72 @@ void testFiltersOnImage(const char *filename, double totReg, double totSha, doub
 
 
         // WARMUP RUN (fills cache with intial config loads)
-        convolutionKernel<<<dimGrid, dimBlock>>>(dData, width, height, tex, filter.d_filter, filter.settings.kernelSize);
+        convolutionKernel<<<dimGrid, dimBlock>>>(dData, width, height, tex_obj.tex, filter.d_filter, filter.settings.kernelSize);
         checkCudaErrors(cudaDeviceSynchronize());
         convolutionSharedKernel<<<dimGrid, dimBlock, sharedMemSize>>>(
-            dData, width, height, tex, filter.d_filter, filter.settings.kernelSize);
+            dData, width, height, tex_obj.tex, filter.d_filter, filter.settings.kernelSize);
         checkCudaErrors(cudaDeviceSynchronize());
 
         StopWatchInterface *timer = NULL;
         sdkCreateTimer(&timer);
 
+        ExperimentConfig input = {
+            size,
+            width,
+            height,
+            filter,
+            tex_obj.tex,
+            dData,
+            timer,
+            {
+                dimBlock,
+                dimGrid,
+                sharedMemSize
+            },
+            hData
+        };
+
         // Start tests
+        ExperimentReturn regular = runConvKernel(input);
+        ExperimentReturn shared = runConvKernelShared(input);
+        ExperimentReturn sequential = runSequentialConv(input);
 
-
-
-
+        experiments[idx] = {
+            filename,
+            filters[idx],
+            {
+                regular.time,
+                shared.time,
+                sequential.time
+            }
+        };
 
         // outputs
-        writeOutputs(size, dData, hOutputRegular, hOutputShared, hSequentialOutput, imagePath, height, width);
+        writeOutputs(size, dData,regular.output, shared.output, sequential.output, imagePath, filters[idx], height, width);
 
         // Cleanup pointers
         sdkDeleteTimer(&timer);
         delete[] filter.filterArray;
         checkCudaErrors(cudaFree(filter.d_filter));
-        checkCudaErrors(cudaFree(hOutputRegular));
-        checkCudaErrors(cudaFree(hOutputShared));
+        checkCudaErrors(cudaFree(regular.output));
+        checkCudaErrors(cudaFree(shared.output));
 
-        checkCudaErrors(cudaDestroyTextureObject(tex));
+
+        checkCudaErrors(cudaDestroyTextureObject(tex_obj.tex));
         checkCudaErrors(cudaFree(dData));
-        // checkCudaErrors(cudaFreeArray(cuArray));
-        free(hSequentialOutput);
+        checkCudaErrors(cudaFreeArray(tex_obj.cuArray));
+        free(sequential.output);
     }
     free(imagePath);
+    return experiments;
 }
 
-struct KernelConfig {
-    dim3 dimBlock;
-    dim3 dimGrid;
-    size_t sharedMemSize;
-};
-
-struct ExperimentConfig {
-    unsigned int size;
-    int width;
-    int height;
-    ConvolutionFilter filter;
-    cudaTextureObject_t tex;
-    float *d_data;
-    float *output;
-    StopWatchInterface *timer;
-    KernelConfig kernelConfig;
-};
-
-float runConvKernel(ExperimentConfig params) {
+ExperimentReturn runConvKernel(ExperimentConfig params) {
     // start experiment for image
     // conv kernel first
-    auto& [size, width, height, filter, tex, d_data, output, timer, kernelConfig] = params;
-
+    auto& [size, width, height, filter, tex, d_data, timer, kernelConfig, h_data] = params;
+    float *hOutputRegular = NULL; // device pointers
+    checkCudaErrors(cudaMalloc((void **)&hOutputRegular, size));
     printf("\nTesting regular CUDA convolution:\n");
     sdkStartTimer(&timer);
     for(int i = 0; i < 10; i++) {
@@ -374,34 +431,42 @@ float runConvKernel(ExperimentConfig params) {
     }
     sdkStopTimer(&timer);
     float regularTime = sdkGetTimerValue(&timer) / 10.0f;
-    printf("Regular CUDA: %.2f ms (%.2f Mpixels/sec)\n",
-           regularTime, (width * height / (regularTime / 1000.0f)) / 1e6);
+    // printf("Regular CUDA: %.2f ms (%.2f Mpixels/sec)\n",
+    //        regularTime, (width * height / (regularTime / 1000.0f)) / 1e6);
     // copy output to host
-    checkCudaErrors(cudaMemcpy(output, d_data, size, cudaMemcpyDeviceToHost));
+    checkCudaErrors(cudaMemcpy(hOutputRegular, d_data, size, cudaMemcpyDeviceToHost));
 
-    return regularTime;
+    ExperimentReturn response;
+    response.output = hOutputRegular;
+    response.time = (width * height / (regularTime / 1000.0f)) / 1e6;
+    return response;
 }
 
-double runConvKernelShared(int width, int height, unsigned int size, ConvolutionFilter filter, cudaTextureObject_t tex, float *dData, float *hOutputShared, StopWatchInterface *timer) {
+ExperimentReturn runConvKernelShared(ExperimentConfig params) {
+    auto& [size, width, height, filter, tex, d_data, timer, kernelConfig, h_data] = params;
     printf("\nTesting shared memory CUDA convolution:\n");
     sdkResetTimer(&timer);
     sdkStartTimer(&timer);
-
+    float *hOutputShared = NULL;
+    checkCudaErrors(cudaMalloc((void **)&hOutputShared, size));
     for(int i = 0; i < 10; i++) {
-        convolutionSharedKernel<<<dimGrid, dimBlock, sharedMemSize>>>(
-            dData, width, height, tex, filter.d_filter, filter.settings.kernelSize);
+        convolutionSharedKernel<<<kernelConfig.dimGrid, kernelConfig.dimBlock, kernelConfig.sharedMemSize>>>(
+            d_data, width, height, tex, filter.d_filter, filter.settings.kernelSize);
     }
     getLastCudaError("Kernel execution failed");
     checkCudaErrors(cudaDeviceSynchronize());
     sdkStopTimer(&timer);
     float sharedTime = sdkGetTimerValue(&timer) / 10.0f;
-    checkCudaErrors(cudaMemcpy(hOutputShared, dData, size, cudaMemcpyDeviceToHost));
+    checkCudaErrors(cudaMemcpy(hOutputShared, d_data, size, cudaMemcpyDeviceToHost));
 
-    //Mpixels/sec
-    return width * height / (sharedTime / 1000.0f) / 1e6;
+    ExperimentReturn response;
+    response.output = hOutputShared;
+    response.time = width * height / (sharedTime / 1000.0f) / 1e6;
+    return response;
 }
 
-float runSequentialConv(int width, int height, unsigned int size, ConvolutionFilter filter, float *hData, StopWatchInterface *timer) {
+ExperimentReturn runSequentialConv(ExperimentConfig params) {
+    auto& [size, width, height, filter, tex, d_data, timer, kernelConfig, h_data] = params;
     // sequential cpu convolution
     printf("\nTesting sequential CPU convolution:\n");
     sdkResetTimer(&timer);
@@ -413,18 +478,20 @@ float runSequentialConv(int width, int height, unsigned int size, ConvolutionFil
         exit(1);
     }
 
-    sequentialConvolution(hData, hSequentialOutput, width, height, filter.filterArray, filter.settings.kernelSize);
+    sequentialConvolution(h_data, hSequentialOutput, width, height, filter.filterArray, filter.settings.kernelSize);
 
     sdkStopTimer(&timer);
     float sequentialTime = sdkGetTimerValue(&timer);
     // printf("Sequential CPU: %.2f ms (%.2f Mpixels/sec)\n",
     //        sequentialTime, (width * height / (sequentialTime / 1000.0f)) / 1e6);
-
-    return sequentialTime;
+    ExperimentReturn response;
+    response.output = hSequentialOutput;
+    response.time = width * height / (sequentialTime / 1000.0f) / 1e6;
+    return response;
 }
 
 
-cudaTextureObject_t createTextureObject(int width, int height, float *hData, unsigned int size) {
+TextureReturn createTextureObject(int width, int height, float *hData, unsigned int size) {
     // Allocate array and copy image data
     cudaChannelFormatDesc channelDesc =
             cudaCreateChannelDesc(32, 0, 0, 0, cudaChannelFormatKindFloat);
@@ -442,7 +509,7 @@ cudaTextureObject_t createTextureObject(int width, int height, float *hData, uns
 
     cudaTextureDesc texDescr;
     memset(&texDescr, 0, sizeof(cudaTextureDesc));
-    // clamp to 0.0f
+    // clamp to 0.0f provides padding
     texDescr.addressMode[0] = cudaAddressModeClamp;
     texDescr.addressMode[1] = cudaAddressModeClamp;
     texDescr.normalizedCoords = true;
@@ -452,35 +519,70 @@ cudaTextureObject_t createTextureObject(int width, int height, float *hData, uns
     texDescr.readMode = cudaReadModeElementType;
 
     checkCudaErrors(cudaCreateTextureObject(&tex, &texRes, &texDescr, NULL));
-
-    return tex;
+    TextureReturn response;
+    response.tex = tex;
+    response.cuArray = cuArray;
+    return response;
 }
 
-void writeOutputs(unsigned int size, float *dData, float *hOutputRegular, float *hOutputShared, float *hSequentialOutput, char *imagePath, int height, int width) {
+void writeOutputs(unsigned int size,
+                  float *dData,
+                  float *hOutputRegular,
+                  float *hOutputShared,
+                  float *hSequentialOutput,
+                  char *imagePath,
+                  const char *filterName,
+                  int height,
+                  int width)
+{
+    // allocate host buffers
+    float *hOutputData = (float*)malloc(size);
+    float *hOutputReg  = (float*)malloc(size);
+    float *hOutputSha  = (float*)malloc(size);
 
-    float *hOutputData = (float *) malloc(size);
-    float *hOutputReg = (float *) malloc(size);
-    float *hOutputSha = (float *) malloc(size);
+    // copy device → host
+    checkCudaErrors(cudaMemcpy(hOutputData,      dData,           size, cudaMemcpyDeviceToHost));
+    checkCudaErrors(cudaMemcpy(hOutputReg,       hOutputRegular,  size, cudaMemcpyDeviceToHost));
+    checkCudaErrors(cudaMemcpy(hOutputSha,       hOutputShared,   size, cudaMemcpyDeviceToHost));
 
-    checkCudaErrors(cudaMemcpy(hOutputData, dData, size, cudaMemcpyDeviceToHost));
-    checkCudaErrors(cudaMemcpy(hOutputReg, hOutputRegular, size, cudaMemcpyDeviceToHost));
-    checkCudaErrors(cudaMemcpy(hOutputSha, hOutputShared, size, cudaMemcpyDeviceToHost));
+    // compute base length (drop “.pgm”)
+    size_t baseLen = strlen(imagePath) - 4;
 
+    // build each filename into its own buffer
     char outputFilename[1024];
-    strcpy(outputFilename, imagePath);
-    strcpy(outputFilename + strlen(imagePath) - 4, "_out.pgm");
+    memcpy(outputFilename, imagePath, baseLen);
+    outputFilename[baseLen] = '\0';
+    snprintf(outputFilename + baseLen, sizeof(outputFilename) - baseLen,
+             "_%s_out.pgm", filterName);
+
     char regOutputFilename[1024];
-    strcpy(outputFilename, imagePath);
-    strcpy(outputFilename + strlen(imagePath) - 4, "_reg_out.pgm");
+    memcpy(regOutputFilename, imagePath, baseLen);
+    regOutputFilename[baseLen] = '\0';
+    snprintf(regOutputFilename + baseLen, sizeof(regOutputFilename) - baseLen,
+             "_%s_reg_out.pgm", filterName);
+
     char shaOutputFilename[1024];
-    strcpy(outputFilename, imagePath);
-    strcpy(outputFilename + strlen(imagePath) - 4, "_sha_out.pgm");
+    memcpy(shaOutputFilename, imagePath, baseLen);
+    shaOutputFilename[baseLen] = '\0';
+    snprintf(shaOutputFilename + baseLen, sizeof(shaOutputFilename) - baseLen,
+             "_%s_sha_out.pgm", filterName);
+
     char seqOutputFilename[1024];
-    strcpy(outputFilename, imagePath);
-    strcpy(outputFilename + strlen(imagePath) - 4, "_seq_out.pgm");
-    sdkSavePGM(outputFilename, hOutputData, width, height);
-    sdkSavePGM(regOutputFilename, hOutputReg, width, height);
-    sdkSavePGM(shaOutputFilename, hOutputSha, width, height);
-    sdkSavePGM(seqOutputFilename, hSequentialOutput, width, height);
+    memcpy(seqOutputFilename, imagePath, baseLen);
+    seqOutputFilename[baseLen] = '\0';
+    snprintf(seqOutputFilename + baseLen, sizeof(seqOutputFilename) - baseLen,
+             "_%s_seq_out.pgm", filterName);
+
+    // save each image
+    sdkSavePGM(outputFilename,       hOutputData,       width, height);
+    sdkSavePGM(regOutputFilename,    hOutputReg,        width, height);
+    sdkSavePGM(shaOutputFilename,    hOutputSha,        width, height);
+    sdkSavePGM(seqOutputFilename,    hSequentialOutput, width, height);
+
     printf("Wrote '%s'\n", outputFilename);
+
+    // free host buffers
+    free(hOutputData);
+    free(hOutputReg);
+    free(hOutputSha);
 }
